@@ -33,7 +33,7 @@
         <header class="converter-header">
           <button class="icon-button categories-toggle" data-action="open-categories" aria-label="打开分类列表"><span data-icon="menu"></span></button>
           <div class="current-category"><span id="current-icon"></span><div><h2 id="category-title">长度</h2><span id="category-english">Length</span></div></div>
-          <div class="header-actions"><button class="icon-button" data-action="history" title="换算记录" aria-label="换算记录"><span data-icon="history"></span></button><button class="icon-button" data-action="settings" title="设置" aria-label="设置"><span data-icon="settings"></span></button></div>
+          <div class="header-actions"><button class="icon-button" data-action="history" title="换算记录" aria-label="换算记录"><span data-icon="history"></span></button><button id="settings-button" class="icon-button" data-action="settings" title="设置" aria-label="设置"><span data-icon="settings"></span></button></div>
         </header>
         <div class="conversion-toolbar"><span>输入单位</span><button id="swap-button" class="swap-button" data-action="swap" aria-label="交换输入和输出单位"><span data-icon="swap"></span>交换</button><span>换算结果</span></div>
         <div class="wheels" id="wheels">
@@ -47,6 +47,7 @@
           <div class="wheel-fade top" aria-hidden="true"></div><div class="wheel-fade bottom" aria-hidden="true"></div>
         </div>
         <div class="result-bar"><span id="rate-label"></span><button class="text-button" data-action="copy" aria-label="复制换算结果"><span data-icon="copy"></span>复制结果</button></div>
+        <p id="category-note" class="category-note" hidden></p>
         <div class="expression-bar"><span class="expression-label">计算</span><input id="expression" value="1" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="输入数值或算式" maxlength="160"><button class="clear-button" data-action="clear" title="清空（Esc）" aria-label="清空输入">AC</button></div>
         <div id="keypad" class="keypad" role="group" aria-label="计算键盘">
           <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="operator" data-key="/" aria-label="除">÷</button><button class="utility" data-action="backspace" aria-label="退格"><span data-icon="backspace"></span></button>
@@ -57,9 +58,9 @@
         <footer class="converter-footer"><span data-icon="mouse"></span><span>滚动选择单位 · 直接输入数字</span><span class="footer-mark">Metrio</span></footer>
       </section>
     </main>
-    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.3.1</span></footer>
+    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.4.0</span></footer>
   </div>
-  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><h2 id="modal-title"></h2><button class="icon-button" data-action="close-modal" aria-label="关闭"><span data-icon="close"></span></button></div><div id="modal-content"></div></dialog>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><div class="modal-title-group"><button id="modal-back" class="icon-button" data-action="settings" aria-label="返回设置" hidden>‹</button><h2 id="modal-title"></h2></div><button class="icon-button" data-action="close-modal" aria-label="关闭"><span data-icon="close"></span></button></div><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <p id="live-result" class="sr-only" role="status" aria-live="polite"></p>
   <noscript>请启用 JavaScript 以运行本地单位换算。</noscript>

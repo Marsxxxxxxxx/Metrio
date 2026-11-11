@@ -23,10 +23,15 @@
     flow: '<path d="M3 7h15m-4-4 4 4-4 4M6 17h15M10 13l-4 4 4 4"/>',
     density: '<path d="M4 3h16v18H4zM4 14h16M8 17h.01m4 0h.01m4 0h.01M8 10h.01m8-3h.01"/>',
     fuel: '<path d="M4 21V4h10v17M2 21h14M4 10h10m0-4h2l4 4v8a2 2 0 0 0 4 0V9l-4-4"/>',
+    chemistry: '<path d="M9 3h6m-5 0v7L4 20h16l-6-10V3M7 15h10"/>',
+    ratio: '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M4 20 20 4"/>',
+    light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
+    radiation: '<circle cx="12" cy="12" r="2"/><path d="m10 9-3-5a9 9 0 0 1 10 0l-3 5m1 3h6a9 9 0 0 1-5 8l-3-5m-3 0-3 5a9 9 0 0 1-5-8h6"/>',
+    astronomy: '<ellipse cx="12" cy="12" rx="11" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="7"/>',
     search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
     history: '<path d="M3 11a9 9 0 1 1 2 7M3 5v6h6m3-5v6l4 2"/>',
-    settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/>',
+    settings: '<path d="M10 2h4l.5 3 1.5.9 2.8-1 2 3.4-2.2 2v3.4l2.2 2-2 3.4-2.8-1-1.5.9-.5 3h-4l-.5-3-1.5-.9-2.8 1-2-3.4 2.2-2v-3.4l-2.2-2 2-3.4 2.8 1L9.5 5Z"/><circle cx="12" cy="12" r="3"/>',
     swap: '<path d="M3 7h17m-4-4 4 4-4 4M21 17H4m4-4-4 4 4 4"/>',
     copy: '<rect x="8" y="8" width="12" height="13" rx="1"/><path d="M16 8V3H3v13h5"/>',
     backspace: '<path d="M9 5h12v14H9l-7-7zM12 9l6 6m0-6-6 6"/>',
@@ -49,11 +54,21 @@
     return Boolean(cat && cat.units.some(unit => unit.id === pair.from) && cat.units.some(unit => unit.id === pair.to));
   }
   const initial = validPair(saved) ? saved : { category: 'length', from: 'm', to: 'ft', expression: '1' };
+  const hiddenUnits = {};
+  for (const cat of Core.categories) {
+    const hidden = new Set(Array.isArray(saved.hiddenUnits?.[cat.id]) ? saved.hiddenUnits[cat.id] : []);
+    // Repair obsolete or malformed preferences without touching favorites or history.
+    if (cat.units.filter(unit => !hidden.has(unit.id)).length < 2) cat.defaults.forEach(id => hidden.delete(id));
+    hiddenUnits[cat.id] = cat.units.filter(unit => hidden.has(unit.id)).map(unit => unit.id);
+  }
+  let disabledCategories = Core.categories.filter(cat => Array.isArray(saved.disabledCategories) && saved.disabledCategories.includes(cat.id)).map(cat => cat.id);
+  if (disabledCategories.length === Core.categories.length) disabledCategories = disabledCategories.filter(id => id !== 'length');
   const state = {
     category: initial.category, from: initial.from, to: initial.to,
     expression: typeof initial.expression === 'string' && initial.expression.length <= 160 ? initial.expression : '1',
     precision: ['auto', '2', '4', '6', '8'].includes(saved.precision) ? saved.precision : 'auto',
     grouping: saved.grouping !== false,
+    hiddenUnits, disabledCategories,
     favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(validPair).slice(0, 100) : [],
     history: Array.isArray(saved.history) ? saved.history.filter(item => validPair(item) && typeof item.expression === 'string' && item.expression.length <= 160 && Number.isFinite(item.time)).slice(0, 30) : [],
     tab: 'all', search: '', fresh: true, mode: 'desktop'
@@ -71,8 +86,8 @@
   const wheelMotions = { from: null, to: null };
   function setText(node, text) { if (node.textContent !== text) node.textContent = text; }
   function save() {
-    const { category, from, to, expression, precision, grouping, favorites, history } = state;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ category, from, to, expression, precision, grouping, favorites, history })); }
+    const { category, from, to, expression, precision, grouping, favorites, history, hiddenUnits, disabledCategories } = state;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ category, from, to, expression, precision, grouping, favorites, history, hiddenUnits, disabledCategories })); }
     catch {
       if (!storageWarned) { storageWarned = true; toast('当前浏览器无法保存设置；仍可正常换算'); }
     }
@@ -84,6 +99,27 @@
     toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 2400);
   }
   function currentCategory() { return Core.getCategory(state.category); }
+  function activeCategories() { return Core.categories.filter(cat => !state.disabledCategories.includes(cat.id)); }
+  function visibleUnits(cat = currentCategory()) {
+    const hidden = new Set(state.hiddenUnits[cat.id]);
+    return cat.units.filter(unit => !hidden.has(unit.id));
+  }
+  function pairEnabled(pair) {
+    return !state.disabledCategories.includes(pair.category) && !state.hiddenUnits[pair.category].includes(pair.from) && !state.hiddenUnits[pair.category].includes(pair.to);
+  }
+  function reconcileSelection(preserveQuantity = false) {
+    const before = { category: state.category, from: state.from };
+    const cat = activeCategories().find(item => item.id === state.category) || activeCategories()[0];
+    const units = visibleUnits(cat);
+    const ids = new Set(units.map(unit => unit.id));
+    state.category = cat.id;
+    state.from = before.category === cat.id && ids.has(state.from) ? state.from : ids.has(cat.defaults[0]) ? cat.defaults[0] : units[0].id;
+    state.to = before.category === cat.id && ids.has(state.to) ? state.to : ids.has(cat.defaults[1]) ? cat.defaults[1] : units.find(unit => unit.id !== state.from).id;
+    if (preserveQuantity && before.category === cat.id && before.from !== state.from) {
+      try { state.expression = String(Number(Core.convert(evaluatePreview(), cat.id, before.from, state.from).toPrecision(15))); }
+      catch { /* An incomplete expression remains editable after the unit switch. */ }
+    }
+  }
   function currentUnit(side) { return currentCategory().units.find(unit => unit.id === state[side]); }
   function pairKey(pair) { return `${pair.category}:${pair.from}:${pair.to}`; }
   function isFavorite() { return state.favorites.some(pair => pairKey(pair) === pairKey(state)); }
@@ -95,7 +131,7 @@
     return Core.evaluate(text || '0');
   }
   function updateResult() {
-    const cat = currentCategory();
+    const units = visibleUnits();
     try {
       result = { input: evaluatePreview(), error: '' };
       result.value = Core.convert(result.input, state.category, state.from, state.to);
@@ -104,7 +140,7 @@
       const previousFocus = focusTracks[side].querySelector('[id]');
       if (previousFocus) previousFocus.removeAttribute('id');
       wheels[side].querySelectorAll('.unit-row').forEach((node, index) => {
-        const unit = cat.units[index];
+        const unit = units[index];
         const selected = unit.id === state[side];
         node.classList.toggle('selected', selected);
         node.setAttribute('aria-pressed', String(selected));
@@ -126,7 +162,7 @@
     const rate = $('#rate-label');
     rate.classList.toggle('error', Boolean(result.error));
     if (result.error) rate.textContent = result.error;
-    else if (state.category === 'temperature') {
+    else if (state.category === 'temperature' || currentUnit('from').logarithmic || currentUnit('to').logarithmic || state.category === 'pace') {
       rate.textContent = `${format(result.input)} ${currentUnit('from').symbol} = ${format(result.value)} ${currentUnit('to').symbol}`;
     } else if (state.category === 'fuel') {
       rate.textContent = '油耗 · 美制与英制分别计算';
@@ -145,10 +181,10 @@
   }
   function categoryButton(cat, unit) {
     const selected = cat.id === state.category && (!unit || state.from === unit.id);
-    return `<button type="button" class="category-item ${selected ? 'selected' : ''}" data-category="${cat.id}" ${unit ? `data-unit="${unit.id}"` : ''} ${selected ? 'aria-current="true"' : ''}>${icon(cat.icon)}<span class="category-copy"><strong>${unit ? escapeHTML(unit.name) : cat.name}</strong><small>${unit ? `${cat.name} · ${escapeHTML(unit.symbol)}` : cat.english}</small></span><span class="category-meta">${unit ? '↗' : String(cat.units.length).padStart(2, '0')}</span></button>`;
+    return `<button type="button" class="category-item ${selected ? 'selected' : ''}" data-category="${cat.id}" ${unit ? `data-unit="${unit.id}"` : ''} ${selected ? 'aria-current="true"' : ''}>${icon(cat.icon)}<span class="category-copy"><strong>${unit ? escapeHTML(unit.name) : cat.name}</strong><small>${unit ? `${cat.name} · ${escapeHTML(unit.symbol)}` : cat.english}</small></span><span class="category-meta">${unit ? '↗' : String(visibleUnits(cat).length).padStart(2, '0')}</span></button>`;
   }
   function renderCategories() {
-    $('#category-count').textContent = Core.categories.length;
+    $('#category-count').textContent = activeCategories().length;
     $('#favorite-count').textContent = state.favorites.length || '';
     document.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === state.tab)));
     let html = '';
@@ -158,16 +194,16 @@
         const cat = Core.getCategory(pair.category);
         const from = cat.units.find(unit => unit.id === pair.from);
         const to = cat.units.find(unit => unit.id === pair.to);
-        return `<button class="category-item ${pairKey(pair) === pairKey(state) ? 'selected' : ''}" data-favorite-index="${index}">${icon(cat.icon)}<span class="category-copy"><strong>${escapeHTML(from.symbol)} → ${escapeHTML(to.symbol)}</strong><small>${cat.name} · ${escapeHTML(from.name)} / ${escapeHTML(to.name)}</small></span></button>`;
+        return `<button class="category-item ${pairKey(pair) === pairKey(state) ? 'selected' : ''}" data-favorite-index="${index}" ${pairEnabled(pair) ? '' : 'disabled title="在设置 → 单位管理中重新开启"'}>${icon(cat.icon)}<span class="category-copy"><strong>${escapeHTML(from.symbol)} → ${escapeHTML(to.symbol)}</strong><small>${cat.name} · ${escapeHTML(from.name)} / ${escapeHTML(to.name)}${pairEnabled(pair) ? '' : ' · 已关闭'}</small></span></button>`;
       }).join('');
       if (!html) html = `<div class="empty-state">${icon('star')}常用的换算，留在这里。<br>点击键盘上的星标即可收藏。</div>`;
     } else if (query) {
-      for (const cat of Core.categories) {
+      for (const cat of activeCategories()) {
         if (`${cat.name} ${cat.english}`.toLowerCase().includes(query)) html += categoryButton(cat);
-        else html += cat.units.filter(unit => `${unit.name} ${unit.symbol} ${unit.aliases}`.toLowerCase().includes(query)).map(unit => categoryButton(cat, unit)).join('');
+        else html += visibleUnits(cat).filter(unit => `${unit.name} ${unit.symbol} ${unit.aliases}`.toLowerCase().includes(query)).map(unit => categoryButton(cat, unit)).join('');
       }
-      if (!html) html = `<div class="empty-state">${icon('search')}没有找到匹配的单位<br>试试「长度」「英寸」或「km」。</div>`;
-    } else html = Core.categories.map(cat => categoryButton(cat)).join('');
+      if (!html) html = `<div class="empty-state">${icon('search')}没有找到已开启的单位<br><button class="text-button" data-action="unit-settings">到单位管理中查找</button></div>`;
+    } else html = activeCategories().map(cat => categoryButton(cat)).join('');
     $('#category-list').innerHTML = html;
   }
   function rowHeightFor(side) {
@@ -214,7 +250,7 @@
     wheels[side].classList.remove('is-animating');
   }
   function selectVisibleUnit(side) {
-    const units = currentCategory().units;
+    const units = visibleUnits();
     const index = Math.max(0, Math.min(units.length - 1, Math.round(wheels[side].scrollTop / rowHeightFor(side))));
     if (units[index].id !== state[side]) selectUnit(side, units[index].id, false);
   }
@@ -227,7 +263,7 @@
   function animateWheel(side) {
     const wheel = wheels[side];
     if (!wheel.clientHeight || alignFrame) return;
-    const target = currentCategory().units.findIndex(unit => unit.id === state[side]) * rowHeightFor(side);
+    const target = visibleUnits().findIndex(unit => unit.id === state[side]) * rowHeightFor(side);
     const start = wheel.scrollTop;
     const previous = wheelMotions[side];
     if (previous) cancelAnimationFrame(previous.frame);
@@ -269,7 +305,7 @@
     for (const side of ['from', 'to']) stopWheelMotion(side);
     cancelAnimationFrame(alignFrame);
     alignFrame = requestAnimationFrame(() => {
-      const cat = currentCategory();
+      const units = visibleUnits();
       for (const side of ['from', 'to']) {
         const wheel = wheels[side];
         if (!wheel.clientHeight) continue;
@@ -277,7 +313,7 @@
         const padding = Math.max(0, (wheel.clientHeight - rowHeight) / 2);
         wheel.style.paddingBlock = `${padding}px`;
         wheel.style.scrollPaddingBlock = `${padding}px`;
-        wheel.scrollTop = cat.units.findIndex(unit => unit.id === state[side]) * rowHeight;
+        wheel.scrollTop = units.findIndex(unit => unit.id === state[side]) * rowHeight;
         syncWheelPresentation(side);
       }
       alignFrame = 0;
@@ -286,12 +322,15 @@
   function renderConverter() {
     for (const side of ['from', 'to']) stopWheelMotion(side);
     const cat = currentCategory();
+    const units = visibleUnits(cat);
     $('#category-title').textContent = cat.name;
     $('#category-english').textContent = cat.english;
     $('#current-icon').innerHTML = icon(cat.icon);
+    $('#category-note').textContent = cat.note || '';
+    $('#category-note').hidden = !cat.note;
     for (const side of ['from', 'to']) {
-      wheels[side].innerHTML = cat.units.map(unit => `<button type="button" class="unit-row" data-side="${side}" data-unit="${unit.id}" aria-label="${side === 'from' ? '输入' : '输出'}单位：${escapeHTML(unit.name)} ${escapeHTML(unit.symbol)}" aria-pressed="false" tabindex="-1"><span class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number ${side === 'from' ? 'from-number' : ''}"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></span></button>`).join('');
-      focusTracks[side].innerHTML = cat.units.map(unit => `<div class="unit-focus"><div class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></div></div>`).join('');
+      wheels[side].innerHTML = units.map(unit => `<button type="button" class="unit-row" data-side="${side}" data-unit="${unit.id}" aria-label="${side === 'from' ? '输入' : '输出'}单位：${escapeHTML(unit.name)} ${escapeHTML(unit.symbol)}" aria-pressed="false" tabindex="-1"><span class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number ${side === 'from' ? 'from-number' : ''}"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></span></button>`).join('');
+      focusTracks[side].innerHTML = units.map(unit => `<div class="unit-focus"><div class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></div></div>`).join('');
       wheelFaces[side] = Array.from(wheels[side].children, (row, index) => [row.firstElementChild, focusTracks[side].children[index].firstElementChild]);
     }
     updateResult();
@@ -299,17 +338,19 @@
   }
   function chooseCategory(categoryId, fromId, toId) {
     const cat = Core.getCategory(categoryId);
+    if (state.disabledCategories.includes(cat.id)) return;
+    const units = visibleUnits(cat);
     state.category = cat.id;
-    state.from = fromId || cat.defaults[0];
-    state.to = toId || cat.defaults[1];
-    if (state.from === state.to && !toId) state.to = cat.units.find(unit => unit.id !== state.from).id;
+    state.from = units.some(unit => unit.id === fromId) ? fromId : units.some(unit => unit.id === cat.defaults[0]) ? cat.defaults[0] : units[0].id;
+    state.to = units.some(unit => unit.id === toId) ? toId : units.some(unit => unit.id === cat.defaults[1]) ? cat.defaults[1] : units[1].id;
+    if (state.from === state.to && !toId) state.to = units.find(unit => unit.id !== state.from).id;
     state.fresh = true;
     app.dataset.page = 'converter';
     renderCategories();
     renderConverter();
   }
   function selectUnit(side, unitId, reposition = true) {
-    if (!currentCategory().units.some(unit => unit.id === unitId)) return;
+    if (!visibleUnits().some(unit => unit.id === unitId)) return;
     state[side] = unitId;
     updateResult();
     if (reposition) animateWheel(side);
@@ -348,13 +389,74 @@
     state.history = state.history.slice(0, 30);
     save();
   }
-  function showModal(title, html) {
+  function showModal(title, html, page = 'general') {
+    $('#modal').dataset.page = page;
+    $('#modal-back').hidden = page !== 'units';
     $('#modal-title').textContent = title;
     $('#modal-content').innerHTML = html;
+    $('#modal-content').scrollTop = 0;
     if (!$('#modal').open) $('#modal').showModal();
   }
   function showSettings() {
-    showModal('设置', `<label class="setting-row"><span>显示精度<small>仅影响显示，不影响内部计算</small></span><select id="precision-setting" aria-label="显示精度">${[['auto', '自动'], ['2', '最多 2 位小数'], ['4', '最多 4 位小数'], ['6', '最多 6 位小数'], ['8', '最多 8 位小数']].map(([value, label]) => `<option value="${value}" ${state.precision === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label class="setting-row"><span>千位分隔符<small>例如 12,345.67</small></span><input id="grouping-setting" type="checkbox" ${state.grouping ? 'checked' : ''} aria-label="千位分隔符"></label><p class="modal-note">红白配色 · 所有换算在本机完成。<br>支持键盘数字、+ − × ÷、括号和 Enter。<br>Esc 清空输入，Ctrl + K 搜索单位。<br>输入框外按 F 收藏，按 S 交换单位。</p><p class="modal-note">${escapeHTML(currentCategory().note || '单位采用固定定义，换算结果以显示精度为准。')}</p>`);
+    showModal('设置', `<button class="setting-row setting-link" data-action="unit-settings"><span>单位管理<small>${activeCategories().length} 个分类 · ${activeCategories().reduce((total, cat) => total + visibleUnits(cat).length, 0)} 个已开启单位</small></span><span aria-hidden="true">›</span></button><label class="setting-row"><span>显示精度<small>仅影响显示，不影响内部计算</small></span><select id="precision-setting" aria-label="显示精度">${[['auto', '自动'], ['2', '最多 2 位小数'], ['4', '最多 4 位小数'], ['6', '最多 6 位小数'], ['8', '最多 8 位小数']].map(([value, label]) => `<option value="${value}" ${state.precision === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label class="setting-row"><span>千位分隔符<small>例如 12,345.67</small></span><input id="grouping-setting" type="checkbox" ${state.grouping ? 'checked' : ''} aria-label="千位分隔符"></label><p class="modal-note">红白配色 · 所有换算在本机完成。<br>支持键盘数字、+ − × ÷、括号和 Enter。<br>Esc 清空输入，Ctrl + K 搜索单位。<br>输入框外按 F 收藏，按 S 交换单位。</p><p class="modal-note">${escapeHTML(currentCategory().note || '单位采用固定定义，换算结果以显示精度为准。')}</p>`, 'settings');
+  }
+  let unitSearch = '';
+  let openUnitGroups = new Set();
+  function showUnitSettings() {
+    unitSearch = '';
+    openUnitGroups = new Set([state.category]);
+    showModal('单位管理', `<div class="unit-manager-toolbar"><label class="unit-manager-search">${icon('search')}<input id="unit-search" type="search" placeholder="搜索分类、名称或符号" aria-label="搜索所有单位" autocomplete="off"></label><div class="unit-manager-overview"><span id="unit-manager-count"></span><button class="text-button" data-action="units-enable-all">全部开启</button></div></div><p class="unit-manager-help">勾选后即时生效。每类至少保留 2 个单位，也可关闭整个分类。</p><p id="unit-manager-status" class="unit-manager-status" role="status" aria-live="polite"></p><div id="unit-manager-groups"></div>`, 'units');
+    renderUnitGroups();
+  }
+  function renderUnitGroups() {
+    const query = unitSearch.trim().toLowerCase();
+    let html = '';
+    for (const cat of Core.categories) {
+      const categoryMatch = `${cat.name} ${cat.english}`.toLowerCase().includes(query);
+      const matches = cat.units.filter(unit => !query || categoryMatch || `${unit.name} ${unit.symbol} ${unit.aliases}`.toLowerCase().includes(query));
+      if (!matches.length) continue;
+      const enabled = !state.disabledCategories.includes(cat.id);
+      html += `<details class="unit-group" data-unit-group="${cat.id}" ${query || openUnitGroups.has(cat.id) ? 'open' : ''}><summary>${icon(cat.icon)}<span class="unit-group-name">${cat.name}<small>${cat.english}</small></span><span class="unit-group-count" data-unit-count="${cat.id}"></span></summary><div class="unit-group-tools"><label class="category-switch"><input type="checkbox" data-enable-category="${cat.id}" aria-label="开启${cat.name}分类" ${enabled ? 'checked' : ''}>开启此分类</label><div><button data-unit-preset="all" data-unit-category="${cat.id}">本类全选</button><button data-unit-preset="common" data-unit-category="${cat.id}">仅常用</button></div></div><div class="unit-options">${matches.map(unit => `<label class="unit-option"><input type="checkbox" data-enable-unit="${unit.id}" data-unit-category="${cat.id}" aria-label="${escapeHTML(cat.name + '：' + unit.name + ' ' + unit.symbol)}" ${state.hiddenUnits[cat.id].includes(unit.id) ? '' : 'checked'}><span>${escapeHTML(unit.name)}<small>${escapeHTML(unit.symbol)}</small></span></label>`).join('')}</div>${cat.note ? `<p class="unit-definition-note">${escapeHTML(cat.note)}</p>` : ''}</details>`;
+    }
+    $('#unit-manager-groups').innerHTML = html || '<p class="empty-state">没有找到匹配的分类或单位。</p>';
+    $('#unit-manager-groups').querySelectorAll('details').forEach(details => details.addEventListener('toggle', () => {
+      if (!unitSearch) { if (details.open) openUnitGroups.add(details.dataset.unitGroup); else openUnitGroups.delete(details.dataset.unitGroup); }
+    }));
+    refreshUnitManager();
+  }
+  function refreshUnitManager() {
+    if (!$('#unit-manager-count')) return;
+    const cats = activeCategories();
+    $('#unit-manager-count').textContent = `${cats.length} / ${Core.categories.length} 类 · ${cats.reduce((total, cat) => total + visibleUnits(cat).length, 0)} / ${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位`;
+    document.querySelectorAll('[data-unit-count]').forEach(node => {
+      const cat = Core.getCategory(node.dataset.unitCount);
+      node.textContent = state.disabledCategories.includes(cat.id) ? '已关闭' : `${visibleUnits(cat).length} / ${cat.units.length}`;
+    });
+    document.querySelectorAll('[data-enable-category]').forEach(input => { input.checked = !state.disabledCategories.includes(input.dataset.enableCategory); });
+    document.querySelectorAll('[data-enable-unit]').forEach(input => { input.checked = !state.hiddenUnits[input.dataset.unitCategory].includes(input.dataset.enableUnit); });
+  }
+  function applyUnitPreferences(message = '已应用，重新打开仍会保留。') {
+    reconcileSelection(true);
+    renderCategories(); renderConverter();
+    refreshUnitManager();
+    $('#unit-manager-status').textContent = storageWarned ? '已在当前窗口生效；当前环境无法保存设置。' : message;
+  }
+  function setCategoryEnabled(id, enabled) {
+    if (!enabled && !state.disabledCategories.includes(id) && activeCategories().length === 1) {
+      $('#unit-manager-status').textContent = '至少保留一个开启的分类。'; refreshUnitManager(); return;
+    }
+    state.disabledCategories = state.disabledCategories.filter(item => item !== id);
+    if (!enabled) state.disabledCategories.push(id);
+    applyUnitPreferences();
+  }
+  function setUnitEnabled(categoryId, unitId, enabled) {
+    const cat = Core.getCategory(categoryId);
+    if (!enabled && !state.hiddenUnits[categoryId].includes(unitId) && visibleUnits(cat).length <= 2) {
+      $('#unit-manager-status').textContent = '每类至少保留两个单位；不需要时可关闭整个分类。'; refreshUnitManager(); return;
+    }
+    state.hiddenUnits[categoryId] = state.hiddenUnits[categoryId].filter(id => id !== unitId);
+    if (!enabled) state.hiddenUnits[categoryId].push(unitId);
+    applyUnitPreferences();
   }
   function showHistory() {
     const items = state.history.map((entry, index) => {
@@ -364,7 +466,7 @@
         const output = Core.convert(input, entry.category, entry.from, entry.to);
         const from = cat.units.find(unit => unit.id === entry.from);
         const to = cat.units.find(unit => unit.id === entry.to);
-        return `<button class="history-item" data-history-index="${index}"><span>${format(input)} ${escapeHTML(from.symbol)} <span style="color:var(--red)">→</span> ${format(output)} ${escapeHTML(to.symbol)}</span><small>${cat.name} · ${new Date(entry.time).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></button>`;
+        return `<button class="history-item" data-history-index="${index}" ${pairEnabled(entry) ? '' : 'disabled title="在设置 → 单位管理中重新开启"'}><span>${format(input)} ${escapeHTML(from.symbol)} <span style="color:var(--red)">→</span> ${format(output)} ${escapeHTML(to.symbol)}</span><small>${cat.name} · ${new Date(entry.time).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}${pairEnabled(entry) ? '' : ' · 单位已关闭'}</small></button>`;
       } catch { return ''; }
     }).join('');
     showModal('换算记录', items || `<div class="empty-state">${icon('history')}还没有换算记录<br>按下 = 或复制结果后，记录会保存在这里。</div>`);
@@ -431,28 +533,37 @@
       }
       case 'copy': copyResult(); break;
       case 'settings': showSettings(); break;
+      case 'unit-settings': showUnitSettings(); break;
+      case 'units-enable-all':
+        state.disabledCategories = [];
+        for (const cat of Core.categories) state.hiddenUnits[cat.id] = [];
+        applyUnitPreferences('全部分类与单位已开启。'); break;
       case 'history': showHistory(); break;
       case 'close-modal': $('#modal').close(); break;
       case 'about':
-        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.3.1</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
+        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.4.0</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
         break;
     }
   }
   document.addEventListener('click', event => {
     const button = event.target.closest('button');
-    if (!button) return;
+    if (!button || button.disabled) return;
     const data = button.dataset;
-    if (data.action) performAction(data.action);
+    if (data.unitPreset) {
+      const cat = Core.getCategory(data.unitCategory);
+      state.hiddenUnits[cat.id] = data.unitPreset === 'all' ? [] : cat.units.filter(unit => !cat.common.includes(unit.id)).map(unit => unit.id);
+      applyUnitPreferences(data.unitPreset === 'all' ? `${cat.name}的全部单位已开启。` : `${cat.name}已保留常用单位。`);
+    } else if (data.action) performAction(data.action);
     else if (data.key) appendKey(data.key);
     else if (data.category) chooseCategory(data.category, data.unit);
     else if (data.side) selectUnit(data.side, data.unit);
     else if (data.tab) { state.tab = data.tab; state.search = ''; $('#category-search').value = ''; renderCategories(); }
     else if (data.favoriteIndex !== undefined) {
       const pair = state.favorites[Number(data.favoriteIndex)];
-      if (pair) chooseCategory(pair.category, pair.from, pair.to);
+      if (pair && pairEnabled(pair)) chooseCategory(pair.category, pair.from, pair.to);
     } else if (data.historyIndex !== undefined) {
       const entry = state.history[Number(data.historyIndex)];
-      if (entry) { state.expression = entry.expression; chooseCategory(entry.category, entry.from, entry.to); $('#modal').close(); }
+      if (entry && pairEnabled(entry)) { state.expression = entry.expression; chooseCategory(entry.category, entry.from, entry.to); $('#modal').close(); }
     } else if (data.mode) {
       state.mode = data.mode;
       app.classList.toggle('phone', data.mode === 'phone');
@@ -462,6 +573,7 @@
     }
   });
   $('#category-search').addEventListener('input', event => { state.search = event.target.value; renderCategories(); });
+  document.addEventListener('input', event => { if (event.target.id === 'unit-search') { unitSearch = event.target.value; renderUnitGroups(); } });
   expression.addEventListener('input', () => {
     const selection = expression.selectionStart;
     state.expression = expression.value;
@@ -471,6 +583,8 @@
   });
   expression.addEventListener('focus', () => { state.fresh = false; });
   document.addEventListener('change', event => {
+    if (event.target.dataset.enableCategory) setCategoryEnabled(event.target.dataset.enableCategory, event.target.checked);
+    if (event.target.dataset.enableUnit) setUnitEnabled(event.target.dataset.unitCategory, event.target.dataset.enableUnit, event.target.checked);
     if (event.target.id === 'precision-setting') { state.precision = event.target.value; updateResult(); }
     if (event.target.id === 'grouping-setting') { state.grouping = event.target.checked; updateResult(); }
   });
@@ -518,7 +632,7 @@
       // OS scrolling preferences express a detent as pixels, lines or pages;
       // that distance must not skip items in a discrete unit selector.
       event.preventDefault();
-      const units = currentCategory().units;
+      const units = visibleUnits();
       const index = units.findIndex(unit => unit.id === state[side]);
       const next = Math.max(0, Math.min(units.length - 1, index + Math.sign(delta)));
       if (next !== index) selectUnit(side, units[next].id);
@@ -543,18 +657,19 @@
       const directions = { ArrowUp: -1, ArrowDown: 1, PageUp: -3, PageDown: 3 };
       if (!(event.key in directions)) return;
       event.preventDefault();
-      const units = currentCategory().units;
+      const units = visibleUnits();
       const index = units.findIndex(unit => unit.id === state[side]);
       selectUnit(side, units[Math.max(0, Math.min(units.length - 1, index + directions[event.key]))].id);
     });
   }
+  reconcileSelection();
   fillIcons();
   renderCategories();
   renderConverter();
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(alignWheels).observe($('#wheels'));
   window.addEventListener('resize', alignWheels);
   if (desktopHost) {
-    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.3.1', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
+    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.4.0', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
   }
   // Local development only: direct file opening has no server or network dependency.
   if (/^https?:$/.test(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname) && typeof EventSource !== 'undefined') {

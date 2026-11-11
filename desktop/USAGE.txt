@@ -1,4 +1,4 @@
-Metrio · 度衡 0.3.1 — Windows 桌面版（64 位）
+Metrio · 度衡 0.4.0 — Windows 桌面版（64 位）
 
 双击 Metrio.exe 即可使用，不需要启动浏览器或本地服务器。
 移动或复制时请保留整个 Metrio 文件夹，不能只复制 Metrio.exe。
@@ -19,6 +19,11 @@ https://developer.microsoft.com/microsoft-edge/webview2/
 数字键盘：直接输入数字和 + - * /，Enter 计算，Esc 清空。
 F：收藏当前换算；S：交换单位（均在输入框外）。
 Ctrl+K：搜索。F12：打开开发工具。Ctrl+R：刷新界面。
+
+本版提供 71 个分类、736 个单位条目。点击右上角齿轮进入设置，再打开“单位管理”。
+支持搜索全部单位、逐项勾选、关闭整个分类、本类全选和仅常用；选择即时生效并保留。
+主搜索和滚轮只使用已开启的单位；关闭单位不会删除收藏和历史，重新开启即可使用。
+温差、配速、马赫、厨房杯制等单位的限定条件会在界面上显示。
 
 红白界面参考 Andrej Mihelic 的 VERT，本软件是个人重实现，与原作者无关联。
 https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter

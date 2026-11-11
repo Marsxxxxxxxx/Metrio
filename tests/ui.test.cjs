@@ -68,7 +68,8 @@ test('Application starts and numbers from both keypad and physical keyboard conv
 test('Search by unit finds Fahrenheit and selects the right category and source', t => {
   const { $, input, click, output } = setup(t);
   input('华氏', '#category-search');
-  assert.equal($('#category-list').children.length, 1);
+  assert.ok($('#category-list [data-category="temperature"][data-unit="f"]'));
+  assert.ok($('#category-list [data-category="temperature-delta"][data-unit="df"]'), 'Absolute temperature and temperature intervals remain distinct results');
   click('#category-list [data-unit="f"]');
   assert.equal($('#category-title').textContent, '温度');
   assert.equal($('#from-wheel .selected').dataset.unit, 'f');
@@ -180,8 +181,8 @@ test('The Windows host receives readiness after the shared interface is initiali
   assert.equal($('#category-title').textContent, '长度');
   assert.equal(messages.length, 1);
   assert.equal(messages[0].type, 'metrio-ready');
-  assert.equal(messages[0].categories, 18);
-  assert.equal(messages[0].units, 130);
+  assert.equal(messages[0].categories, window.MetrioCore.categories.length);
+  assert.equal(messages[0].units, window.MetrioCore.categories.reduce((total, cat) => total + cat.units.length, 0));
 });
 
 function scrollingApp(t) {
@@ -194,6 +195,124 @@ function scrollingApp(t) {
   app.flushFrames();
   return app;
 }
+
+function manageUnits(app) {
+  app.click('#settings-button');
+  assert.equal(app.$('#modal-title').textContent, '设置');
+  app.click('[data-action="unit-settings"]');
+  assert.equal(app.$('#modal-title').textContent, '单位管理');
+}
+const unitOption = (category, unit) => `[data-enable-unit="${unit}"][data-unit-category="${category}"]`;
+
+test('Gear settings open searchable unit management and hidden units stay hidden after reload', t => {
+  const app = setup(t);
+  manageUnits(app);
+  assert.equal(app.$('#modal').dataset.page, 'units');
+  assert.equal(app.$('#modal-back').hidden, false);
+  app.input('纳米', '#unit-search');
+  assert.equal(app.$('#unit-manager-groups').children.length, 1);
+  app.click(unitOption('length', 'nm'));
+  assert.equal(app.$('#from-wheel [data-unit="nm"]'), null);
+  assert.match(app.$('#unit-manager-status').textContent, /已应用/);
+  app.click('[data-action="close-modal"]');
+  app.input('纳米', '#category-search');
+  assert.equal(app.$('#category-list [data-unit="nm"]'), null);
+  assert.ok(app.$('#category-list [data-action="unit-settings"]'));
+  const persisted = app.window.localStorage.getItem('vert.local.v1');
+  const restored = setup(t, persisted);
+  assert.equal(restored.$('#from-wheel [data-unit="nm"]'), null);
+  manageUnits(restored); restored.input('纳米', '#unit-search');
+  assert.equal(restored.$(unitOption('length', 'nm')).checked, false);
+  restored.click(unitOption('length', 'nm'));
+  assert.ok(restored.$('#from-wheel [data-unit="nm"]'));
+  restored.click('#modal-back');
+  assert.equal(restored.$('#modal-title').textContent, '设置');
+  assert.equal(restored.$('#modal-back').hidden, true);
+});
+
+test('Hiding the current source preserves its physical quantity and retains disabled favorites and history', t => {
+  const app = setup(t);
+  app.click('#favorite-button'); app.click('[data-action="equals"]');
+  const before = JSON.parse(app.window.localStorage.getItem('vert.local.v1'));
+  const output = app.output();
+  manageUnits(app); app.click(unitOption('length', 'm'));
+  assert.equal(app.$('#from-wheel [data-unit="m"]'), null);
+  assert.equal(app.output(), output);
+  assert.equal(app.$('#rate-label').classList.contains('error'), false);
+  const after = JSON.parse(app.window.localStorage.getItem('vert.local.v1'));
+  assert.deepEqual(after.favorites, before.favorites); assert.deepEqual(after.history, before.history);
+  app.click('[data-action="close-modal"]'); app.click('#favorites-tab');
+  assert.equal(app.$('[data-favorite-index="0"]').disabled, true);
+  app.click('[data-action="history"]');
+  assert.equal(app.$('[data-history-index="0"]').disabled, true);
+  app.click('[data-action="close-modal"]'); manageUnits(app);
+  app.click(unitOption('length', 'm')); app.click('[data-action="close-modal"]');
+  assert.equal(app.$('[data-favorite-index="0"]').disabled, false);
+});
+
+test('Filtered wheel detents and keyboard movement use visible unit indices and keep the white ribbon synchronized', t => {
+  const app = scrollingApp(t);
+  manageUnits(app); app.click(unitOption('length', 'cm')); app.click(unitOption('length', 'km')); app.flushFrames();
+  app.click('[data-action="close-modal"]');
+  assert.equal(app.$('#from-wheel').scrollTop, 4 * 72);
+  app.$('#from-wheel').dispatchEvent(new app.window.WheelEvent('wheel', { deltaY: 120, cancelable: true })); app.flushFrames();
+  assert.equal(app.$('#from-focus .unit-symbol').textContent, 'in');
+  assert.equal(app.$('#from-wheel').scrollTop, 5 * 72);
+  assert.equal(app.$('#from-focus-track').style.transform, 'translate3d(0, -360px, 0)');
+  app.$('#from-wheel').dispatchEvent(new app.window.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); app.flushFrames();
+  assert.equal(app.$('#from-focus .unit-symbol').textContent, 'm');
+  assert.equal(app.$('#to-focus .unit-number').textContent, app.output());
+});
+
+test('Category switches and common/all presets persist without leaving an unavailable selection', t => {
+  const app = setup(t);
+  manageUnits(app);
+  app.click('[data-unit-preset="common"][data-unit-category="length"]');
+  assert.equal(app.$('#from-wheel').children.length, app.window.MetrioCore.getCategory('length').common.length);
+  app.click('[data-enable-category="length"]');
+  assert.equal(app.$('#category-title').textContent, '质量');
+  assert.equal(app.$('#category-list [data-category="length"]'), null);
+  assert.match(app.$('[data-unit-count="length"]').textContent, /已关闭/);
+  const restored = setup(t, app.window.localStorage.getItem('vert.local.v1'));
+  assert.equal(restored.$('#category-title').textContent, '质量');
+  assert.equal(restored.$('#category-list [data-category="length"]'), null);
+  app.click('[data-action="units-enable-all"]');
+  assert.ok(app.$('#category-list [data-category="length"]'));
+  assert.equal(app.$(unitOption('length', 'nm')).checked, true);
+  assert.equal(app.$('[data-enable-category="length"]').checked, true);
+});
+
+test('The last category and last two units are protected, including corrupt preferences on startup', t => {
+  const core = require('../src/engine.js');
+  const saved = JSON.stringify({ category: 'length', from: 'm', to: 'ft', expression: '1',
+    hiddenUnits: { length: core.getCategory('length').units.filter(unit => !['m', 'ft'].includes(unit.id)).map(unit => unit.id) },
+    disabledCategories: core.categories.filter(cat => cat.id !== 'length').map(cat => cat.id) });
+  const app = setup(t, saved); manageUnits(app);
+  app.click(unitOption('length', 'm')); assert.equal(app.$(unitOption('length', 'm')).checked, true);
+  assert.match(app.$('#unit-manager-status').textContent, /至少保留两个/);
+  app.click('[data-enable-category="length"]'); assert.equal(app.$('[data-enable-category="length"]').checked, true);
+  assert.match(app.$('#unit-manager-status').textContent, /至少保留一个/);
+  const corrupt = setup(t, JSON.stringify({ hiddenUnits: { length: core.getCategory('length').units.map(unit => unit.id), mass: 'not an array' }, disabledCategories: core.categories.map(cat => cat.id) }));
+  assert.equal(corrupt.$('#category-title').textContent, '长度');
+  assert.ok(corrupt.$('#from-wheel [data-unit="m"]')); assert.ok(corrupt.$('#to-wheel [data-unit="ft"]'));
+  assert.equal(corrupt.$('#rate-label').classList.contains('error'), false);
+});
+
+test('Every expanded category renders and converts, including logarithmic power and reciprocal pace', t => {
+  const app = setup(t);
+  assert.ok(app.window.MetrioCore.categories.length >= 70);
+  for (const cat of app.window.MetrioCore.categories) {
+    app.click(`#category-list [data-category="${cat.id}"]`);
+    assert.equal(app.$('#from-wheel').children.length, cat.units.length, cat.id);
+    assert.equal(app.$('#rate-label').classList.contains('error'), false, cat.id);
+    assert.notEqual(app.output(), '—', cat.id);
+  }
+  app.click('#category-list [data-category="power"]');
+  app.click('#from-wheel [data-unit="dbm"]'); app.click('#to-wheel [data-unit="w"]'); app.input('30');
+  assert.equal(app.output(), '1'); assert.equal(app.$('#rate-label').textContent, '30 dBm = 1 W');
+  app.click('#category-list [data-category="pace"]'); app.click('#to-wheel [data-unit="kmh"]'); app.input('5');
+  assert.equal(app.output(), '12'); assert.match(app.$('#category-note').textContent, /十进制/);
+});
 
 test('Scrolling to the last source unit keeps the fixed readout and conversion in sync', t => {
   const { window, $, flushFrames, output } = scrollingApp(t);
@@ -282,9 +401,9 @@ test('Fast wheel inputs, direction changes and the two columns remain independen
   for (let count = 0; count < 20; count++) tick('from', -100);
   flushFrames();
   assert.equal($('#from-focus .unit-symbol').textContent, 'nm');
-  for (let count = 0; count < 20; count++) tick('from', 100);
+  for (let count = 0; count < 50; count++) tick('from', 100);
   flushFrames();
-  assert.equal($('#from-focus .unit-symbol').textContent, '尺');
+  assert.equal($('#from-focus .unit-symbol').textContent, window.MetrioCore.getCategory('length').units.at(-1).symbol);
 });
 
 test('Trackpad pixel gestures remain native, including a large delta during momentum', t => {

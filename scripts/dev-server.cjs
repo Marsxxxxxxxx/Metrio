@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   if (url.pathname === '/__health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ app: 'metrio-local', version: '0.3.1' }));
+    res.end(JSON.stringify({ app: 'metrio-local', version: '0.4.0' }));
     return;
   }
   if (url.pathname === '/__events') {
@@ -90,5 +90,5 @@ server.on('error', error => {
   watcher.close(); clearInterval(heartbeat); process.exitCode = 1;
 });
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Metrio v0.3.1\nLocal: http://127.0.0.1:${port}\nLive reload enabled. Press Ctrl+C to stop.`);
+  console.log(`Metrio v0.4.0\nLocal: http://127.0.0.1:${port}\nLive reload enabled. Press Ctrl+C to stop.`);
 });
