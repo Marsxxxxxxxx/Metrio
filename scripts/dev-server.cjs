@@ -1,0 +1,57 @@
+'use strict';
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const port = Number(process.env.PORT || process.argv[2] || 4173);
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('PORT must be between 1024 and 65535.');
+const clients = new Set();
+const files = new Set(['index.html', 'src/engine.js', 'src/app.js', 'src/styles.css', 'assets/icon.svg']);
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, `http://127.0.0.1:${port}`);
+  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
+  if (url.pathname === '/__health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ app: 'metrio-local', version: '0.2.3' }));
+    return;
+  }
+  if (url.pathname === '/__events') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+    res.write(': connected\n\n');
+    clients.add(res);
+    req.on('close', () => clients.delete(res));
+    return;
+  }
+  let file;
+  try { file = decodeURIComponent(url.pathname).replace(/^\//, '') || 'index.html'; }
+  catch { res.writeHead(400); res.end(); return; }
+  if (!files.has(file)) { res.writeHead(404); res.end('Not found'); return; }
+  fs.readFile(path.join(root, file), (error, data) => {
+    if (error) { res.writeHead(500); res.end('Could not read application file'); return; }
+    res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+    res.end(req.method === 'HEAD' ? undefined : data);
+  });
+});
+let debounce;
+const watcher = fs.watch(root, { recursive: true }, (_event, filename) => {
+  if (!filename || !files.has(filename.replaceAll('\\', '/'))) return;
+  clearTimeout(debounce);
+  debounce = setTimeout(() => { for (const client of clients) client.write('event: reload\ndata: changed\n\n'); }, 90);
+});
+const heartbeat = setInterval(() => { for (const client of clients) client.write(': keepalive\n\n'); }, 20000);
+heartbeat.unref();
+function shutdown() {
+  watcher.close(); clearInterval(heartbeat); clearTimeout(debounce);
+  for (const client of clients) client.end();
+  server.close();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+server.on('error', error => {
+  console.error(error.code === 'EADDRINUSE' ? `Port ${port} is already in use. Try: node scripts/dev-server.cjs 4174` : error.message);
+  watcher.close(); clearInterval(heartbeat); process.exitCode = 1;
+});
+server.listen(port, '127.0.0.1', () => {
+  console.log(`Metrio v0.2.3\nLocal: http://127.0.0.1:${port}\nLive reload enabled. Press Ctrl+C to stop.`);
+});

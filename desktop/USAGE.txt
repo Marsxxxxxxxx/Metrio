@@ -1,0 +1,26 @@
+Metrio · 度衡 0.2.3 — Windows 桌面版（64 位）
+
+双击 Metrio.exe 即可使用，不需要启动浏览器或本地服务器。
+移动或复制时请保留整个 Metrio 文件夹，不能只复制 Metrio.exe。
+
+运行环境：Windows 10/11 x64、.NET Framework 4.8、Microsoft Edge WebView2 Runtime。
+本机已检测到所需运行环境。其他电脑若缺少 WebView2，可从 Microsoft 官方网站安装：
+https://developer.microsoft.com/microsoft-edge/webview2/
+
+所有换算在本地完成。收藏、历史和窗口设置保存在：
+%LOCALAPPDATA%\Vert
+这个旧目录名用于兼容原有数据，不影响 Metrio 的应用名称。
+它们与普通浏览器中的收藏相互独立。替换程序文件不会清空收藏。
+
+若滚动时仍出现闪烁或残影：关闭所有 Metrio 窗口，再双击 Metrio Compatibility.cmd。
+兼容模式使用软件渲染，仅影响 Metrio。它与普通模式共用收藏和记录，
+但可能增加 CPU 占用。重新运行 Metrio.exe 即可恢复普通模式。
+
+数字键盘：直接输入数字和 + - * /，Enter 计算，Esc 清空。
+F：收藏当前换算；S：交换单位（均在输入框外）。
+Ctrl+K：搜索。F12：打开开发工具。Ctrl+R：刷新界面。
+
+红白界面参考 Andrej Mihelic 的 VERT，本软件是个人重实现，与原作者无关联。
+https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter
+
+Microsoft WebView2 的许可及通知位于 licenses 文件夹。
