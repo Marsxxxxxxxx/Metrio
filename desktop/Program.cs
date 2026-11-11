@@ -14,8 +14,8 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("Metrio · 度衡")]
 [assembly: AssemblyDescription("Metrio (度衡) — personal unit converter for Windows")]
 [assembly: AssemblyProduct("Metrio · 度衡")]
-[assembly: AssemblyVersion("0.2.3.0")]
-[assembly: AssemblyFileVersion("0.2.3.0")]
+[assembly: AssemblyVersion("0.3.0.0")]
+[assembly: AssemblyFileVersion("0.3.0.0")]
 [assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]
 
 namespace MetrioDesktop
@@ -121,7 +121,7 @@ namespace MetrioDesktop
                 refreshTimer.Stop();
                 if (!closing && webView.CoreWebView2 != null) webView.CoreWebView2.Reload();
             };
-            Log("starting version=0.2.3 mode=" + (development ? "development" : "desktop"));
+            Log("starting version=0.3.0 mode=" + (development ? "development" : "desktop"));
             Log("rendering=" + (softwareRendering ? "software" : "default"));
         }
 
@@ -181,7 +181,18 @@ namespace MetrioDesktop
                     if (!IsLocalPage(args.Request.Uri))
                         args.Response = environment.CreateWebResourceResponse(new MemoryStream(), 403, "External resources are disabled", "Content-Type: text/plain");
                 };
-                if (development) WatchSourceFiles();
+                if (development)
+                {
+                    WatchSourceFiles();
+                    if (File.Exists(Path.Combine(contentRoot, "devtools", "style-panel.js")) && File.Exists(Path.Combine(contentRoot, "devtools", "style-panel.css")))
+                    {
+                        try
+                        {
+                            await core.AddScriptToExecuteOnDocumentCreatedAsync("document.addEventListener('DOMContentLoaded', function () { if (location.hostname !== 'vert.example' || new URLSearchParams(location.search).get('debug') === '0') return; var script = document.createElement('script'); script.src = '/devtools/style-panel.js'; script.onerror = function () { script.remove(); }; document.head.appendChild(script); }, { once: true });");
+                        }
+                        catch (Exception error) { Log("devtools-unavailable " + error.Message); }
+                    }
+                }
                 core.Navigate(AppUrl);
             }
             catch (WebView2RuntimeNotFoundException)
@@ -209,6 +220,7 @@ namespace MetrioDesktop
                     webView.Focus();
                     Log("ui-ready categories=" + message["categories"] + " units=" + message["units"]);
                 }
+                else if (development && message.ContainsKey("type") && Convert.ToString(message["type"]) == "metrio-devtools-ready") Log("devtools-ready");
             }
             catch (Exception error) { Log("invalid-ready-message " + error.Message); }
         }
@@ -242,13 +254,14 @@ namespace MetrioDesktop
             FileSystemEventHandler onChange = delegate(object sender, FileSystemEventArgs args)
             {
                 string relative = args.FullPath.Substring(contentRoot.TrimEnd(Path.DirectorySeparatorChar).Length).TrimStart(Path.DirectorySeparatorChar).Replace('\\', '/');
-                if (relative != "index.html" && !relative.StartsWith("src/", StringComparison.OrdinalIgnoreCase) && !relative.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)) return;
+                if (relative != "index.html" && !relative.StartsWith("src/", StringComparison.OrdinalIgnoreCase) && !relative.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) && !relative.StartsWith("devtools/", StringComparison.OrdinalIgnoreCase)) return;
                 if (closing || !IsHandleCreated) return;
                 try { BeginInvoke(new Action(delegate { refreshTimer.Stop(); refreshTimer.Start(); })); }
                 catch (InvalidOperationException) { }
             };
             watcher.Changed += onChange;
             watcher.Created += onChange;
+            watcher.Deleted += onChange;
             watcher.Renamed += delegate(object sender, RenamedEventArgs args) { onChange(sender, args); };
             watcher.EnableRaisingEvents = true;
         }

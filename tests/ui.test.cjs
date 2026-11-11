@@ -20,17 +20,22 @@ function setup(t, saved, desktop = false, controlledFrames = false) {
   t.after(() => window.happyDOM.close());
   const frames = new Map();
   let frameId = 0;
+  let frameTime = 0;
   if (controlledFrames) {
     window.requestAnimationFrame = callback => { frames.set(++frameId, callback); return frameId; };
     window.cancelAnimationFrame = id => frames.delete(id);
   }
+  const stepFrame = (elapsed = 16) => {
+    frameTime += elapsed;
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach(callback => callback(frameTime));
+  };
   const flushFrames = () => {
     let passes = 0;
     while (frames.size) {
-      assert.ok(++passes < 20, 'Animation frames should settle');
-      const pending = [...frames.values()];
-      frames.clear();
-      pending.forEach(callback => callback(0));
+      assert.ok(++passes < 80, 'Animation frames should settle');
+      stepFrame();
     }
   };
   if (saved) window.localStorage.setItem('vert.local.v1', saved);
@@ -46,7 +51,7 @@ function setup(t, saved, desktop = false, controlledFrames = false) {
   };
   const key = (value, options = {}) => window.document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true, ...options }));
   const output = () => $('#to-wheel .selected .unit-number').textContent;
-  return { window, $, click, input, key, output, messages, flushFrames };
+  return { window, $, click, input, key, output, messages, flushFrames, stepFrame };
 }
 
 test('Application starts and numbers from both keypad and physical keyboard convert immediately', t => {
@@ -317,4 +322,171 @@ test('Windows detents with small pixel distance still step once; zoom and horizo
   }
   flushFrames();
   assert.equal($('#from-focus .unit-symbol').textContent, 'km');
+});
+
+test('A unit transition has intermediate positions and keeps the clipped white track synchronized', t => {
+  const { window, $, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  assert.equal(wheel.scrollTop, 5 * 72, 'The presentation must not jump directly to the destination');
+  assert.equal($('#from-focus .unit-symbol').textContent, 'km');
+  stepFrame(0);
+  stepFrame(110);
+  assert.ok(wheel.scrollTop > 5 * 72 && wheel.scrollTop < 6 * 72);
+  assert.equal($('#from-focus-track').style.transform, `translate3d(0, ${-wheel.scrollTop}px, 0)`);
+  wheel.dispatchEvent(new window.Event('scroll'));
+  stepFrame();
+  assert.equal($('#from-focus .unit-symbol').textContent, 'km', 'Intermediate scroll events must not replace the intended unit');
+  flushFrames();
+  assert.equal(wheel.scrollTop, 6 * 72);
+  assert.equal(wheel.classList.contains('is-animating'), false);
+});
+
+test('Reversing or repeating a detent retargets the current position without queuing old animations', t => {
+  const { window, $, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  const tick = deltaY => wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY, cancelable: true }));
+  tick(100);
+  stepFrame(0); stepFrame(80);
+  const beforeReverse = wheel.scrollTop;
+  tick(-100);
+  assert.equal(wheel.scrollTop, beforeReverse);
+  assert.equal($('#from-focus .unit-symbol').textContent, 'm');
+  stepFrame(0); stepFrame(50);
+  assert.ok(wheel.scrollTop < beforeReverse);
+  const beforeRepeat = wheel.scrollTop;
+  tick(100); tick(100);
+  assert.equal(wheel.scrollTop, beforeRepeat);
+  flushFrames();
+  assert.equal($('#from-focus .unit-symbol').textContent, 'in');
+  assert.equal(wheel.scrollTop, 7 * 72);
+});
+
+test('Category changes and resize cancel obsolete transitions and align the new content', t => {
+  const { window, $, click, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  stepFrame(0); stepFrame(60);
+  click('[data-category="temperature"]');
+  flushFrames();
+  assert.equal($('#from-focus .unit-symbol').textContent, '°C');
+  assert.equal(wheel.scrollTop, 0);
+  assert.equal(wheel.classList.contains('is-animating'), false);
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  stepFrame(0); stepFrame(40);
+  window.dispatchEvent(new window.Event('resize'));
+  flushFrames();
+  assert.equal($('#from-focus .unit-symbol').textContent, '°F');
+  assert.equal(wheel.scrollTop, 72);
+  assert.equal($('#from-focus-track').style.transform, 'translate3d(0, -72px, 0)');
+});
+
+test('Direct touch input interrupts a transition and returns control to native scrolling', t => {
+  const { window, $, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  stepFrame(0); stepFrame(25);
+  wheel.dispatchEvent(new window.Event('pointerdown'));
+  assert.equal(wheel.classList.contains('is-animating'), false);
+  assert.equal($('#from-focus .unit-symbol').textContent, 'm');
+  wheel.scrollTop = 4 * 72;
+  wheel.dispatchEvent(new window.Event('scrollend'));
+  flushFrames();
+  assert.equal($('#from-focus .unit-symbol').textContent, 'dm');
+  assert.equal(wheel.scrollTop, 4 * 72);
+});
+
+test('Reduced-motion preference skips or finishes a transition without changing the selected unit', t => {
+  const { window, $, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  let reduced = true;
+  window.matchMedia = () => ({ matches: reduced });
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  assert.equal(wheel.scrollTop, 6 * 72);
+  assert.equal(wheel.classList.contains('is-animating'), false);
+  reduced = false;
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100, cancelable: true }));
+  stepFrame(0); stepFrame(40);
+  assert.ok(wheel.scrollTop > 6 * 72 && wheel.scrollTop < 7 * 72);
+  reduced = true;
+  flushFrames();
+  assert.equal(wheel.scrollTop, 7 * 72);
+  assert.equal($('#from-focus .unit-symbol').textContent, 'in');
+  assert.equal(wheel.classList.contains('is-animating'), false);
+});
+
+test('The cylinder keeps the center face flat and tilts the two adjacent faces in opposite directions', t => {
+  const { $ } = scrollingApp(t);
+  const rotation = face => Number(face.style.transform.match(/rotateX\(([-\d.e]+)rad\)/)[1]);
+  for (const side of ['from', 'to']) {
+    const wheel = $(`#${side}-wheel`);
+    const selected = wheel.querySelector('.selected');
+    assert.equal(selected.style.transform, '', 'Snap targets must remain in their original layout');
+    assert.equal(selected.firstElementChild.style.transform, 'none');
+    assert.equal(selected.firstElementChild.style.opacity, '1');
+    assert.equal($(`#${side}-focus .unit-face`).style.transform, 'none');
+    const above = selected.previousElementSibling.firstElementChild;
+    const below = selected.nextElementSibling.firstElementChild;
+    assert.ok(rotation(above) > 0 && rotation(above) <= 5 * Math.PI / 180, 'The upper row must tilt by at most five degrees');
+    assert.ok(rotation(below) < 0 && rotation(below) >= -5 * Math.PI / 180, 'The lower row must tilt in the opposite direction by at most five degrees');
+    assert.equal(rotation(above), -rotation(below));
+    assert.equal(above.style.opacity, below.style.opacity);
+    for (const face of wheel.querySelectorAll('.unit-face')) {
+      if (face.style.transform !== 'none') assert.ok(Math.abs(rotation(face)) <= 5 * Math.PI / 180);
+    }
+    assert.equal(wheel.firstElementChild.firstElementChild.style.visibility, 'hidden');
+    assert.equal(wheel.lastElementChild.firstElementChild.style.visibility, 'hidden');
+  }
+});
+
+test('Cylinder deformation follows the visual position throughout a transition, including the white ribbon', t => {
+  const { window, $, stepFrame, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  const departing = wheel.querySelector('[data-unit="m"] .unit-face');
+  const arriving = wheel.querySelector('[data-unit="km"] .unit-face');
+  wheel.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 120, cancelable: true }));
+  assert.equal(departing.style.transform, 'none', 'Changing the logical destination must not flatten it before it arrives');
+  assert.notEqual(arriving.style.transform, 'none');
+  for (const elapsed of [0, 35, 55, 70]) {
+    stepFrame(elapsed);
+    Array.from(wheel.children).forEach((row, index) => {
+      const face = row.firstElementChild;
+      const whiteFace = $('#from-focus-track').children[index].firstElementChild;
+      assert.equal(face.style.transform, whiteFace.style.transform);
+      assert.equal(face.style.visibility, whiteFace.style.visibility);
+      assert.equal(face.style.opacity, whiteFace.style.opacity);
+      const rotation = face.style.transform.match(/rotateX\(([-\d.e]+)rad\)/);
+      if (rotation) assert.ok(Math.abs(Number(rotation[1])) <= 5 * Math.PI / 180, 'Animation must respect the five-degree limit too');
+    });
+  }
+  assert.notEqual(departing.style.transform, 'none');
+  assert.notEqual(arriving.style.transform, 'none');
+  flushFrames();
+  assert.equal(arriving.style.transform, 'none');
+  assert.equal(arriving.style.opacity, '1');
+  assert.equal($('#from-focus .unit-symbol').textContent, 'km');
+});
+
+test('Native fractional scrolling and compact row heights preserve the cylinder and clickable faces', t => {
+  const { window, $, click, flushFrames } = scrollingApp(t);
+  const wheel = $('#from-wheel');
+  wheel.style.setProperty('--row-height', '64px');
+  window.dispatchEvent(new window.Event('resize'));
+  flushFrames();
+  assert.equal(wheel.scrollTop, 5 * 64);
+  assert.equal($('#from-focus .unit-face').style.transform, 'none');
+  wheel.scrollTop = 5.5 * 64;
+  wheel.dispatchEvent(new window.Event('scroll'));
+  flushFrames();
+  const upper = wheel.querySelector('[data-unit="m"] .unit-face');
+  const lower = wheel.querySelector('[data-unit="km"] .unit-face');
+  assert.equal(upper.style.opacity, lower.style.opacity);
+  assert.notEqual(upper.style.transform, 'none');
+  assert.notEqual(lower.style.transform, 'none');
+  click('#from-wheel [data-unit="m"] .unit-face');
+  flushFrames();
+  assert.equal(wheel.scrollTop, 5 * 64);
+  assert.equal($('#from-focus .unit-symbol').textContent, 'm');
+  assert.equal(upper.style.transform, 'none');
+  assert.equal(lower.style.visibility, 'visible');
 });

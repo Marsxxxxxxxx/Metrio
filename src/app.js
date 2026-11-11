@@ -66,7 +66,9 @@
   const app = $('#app');
   const expression = $('#expression');
   const wheels = { from: $('#from-wheel'), to: $('#to-wheel') };
-  const focusedUnits = { from: $('#from-focus'), to: $('#to-focus') };
+  const focusTracks = { from: $('#from-focus-track'), to: $('#to-focus-track') };
+  const wheelFaces = { from: [], to: [] };
+  const wheelMotions = { from: null, to: null };
   function setText(node, text) { if (node.textContent !== text) node.textContent = text; }
   function save() {
     const { category, from, to, expression, precision, grouping, favorites, history } = state;
@@ -99,6 +101,8 @@
       result.value = Core.convert(result.input, state.category, state.from, state.to);
     } catch (error) { result = { input: null, value: null, error: error.message }; }
     for (const side of ['from', 'to']) {
+      const previousFocus = focusTracks[side].querySelector('[id]');
+      if (previousFocus) previousFocus.removeAttribute('id');
       wheels[side].querySelectorAll('.unit-row').forEach((node, index) => {
         const unit = cat.units[index];
         const selected = unit.id === state[side];
@@ -113,14 +117,11 @@
         }
         setText(node.querySelector('.unit-number'), number);
         node.classList.toggle('long-value', (number.length + unit.symbol.length) > 14);
+        const focus = focusTracks[side].children[index];
+        setText(focus.querySelector('.unit-number'), number);
+        focus.classList.toggle('long-value', number.length + unit.symbol.length > 14);
+        if (selected) focus.id = `${side}-focus`;
       });
-      const unit = currentUnit(side);
-      const number = result.error ? '—' : format(side === 'from' ? result.input : result.value);
-      const focus = focusedUnits[side];
-      setText(focus.querySelector('.unit-name'), unit.name);
-      setText(focus.querySelector('.unit-number'), number);
-      setText(focus.querySelector('.unit-symbol'), unit.symbol);
-      focus.classList.toggle('long-value', number.length + unit.symbol.length > 14);
     }
     const rate = $('#rate-label');
     rate.classList.toggle('error', Boolean(result.error));
@@ -169,29 +170,129 @@
     } else html = Core.categories.map(cat => categoryButton(cat)).join('');
     $('#category-list').innerHTML = html;
   }
+  function rowHeightFor(side) {
+    return parseFloat(getComputedStyle(wheels[side]).getPropertyValue('--row-height')) || 72;
+  }
+  function styleNumber(style, property, fallback, min, max) {
+    const value = parseFloat(style.getPropertyValue(property));
+    return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+  }
+  function syncWheelPresentation(side) {
+    const rowHeight = rowHeightFor(side);
+    const style = getComputedStyle(wheels[side]);
+    const wheelMaxAngle = styleNumber(style, '--wheel-max-angle', 5, 0, 5) * Math.PI / 180;
+    const wheelPerspective = styleNumber(style, '--wheel-perspective', 480, 200, 2000);
+    const scrollTop = wheels[side].scrollTop;
+    // Spread the shallow curve across the visible wheel, including partial edge rows.
+    const visibleRadius = Math.max(rowHeight, (wheels[side].clientHeight + rowHeight) / 2);
+    const radius = wheelMaxAngle > 0 ? visibleRadius / wheelMaxAngle : 0;
+    focusTracks[side].style.transform = `translate3d(0, ${-scrollTop}px, 0)`;
+    wheelFaces[side].forEach((faces, index) => {
+      const offset = index * rowHeight - scrollTop;
+      const angle = wheelMaxAngle > 0 ? Math.max(-wheelMaxAngle, Math.min(wheelMaxAngle, offset / radius)) : 0;
+      const visible = Math.abs(offset) <= visibleRadius;
+      let transform = 'none';
+      let opacity = visible ? Math.pow(Math.cos(angle), .45) : 0;
+      if (visible && wheelMaxAngle > 0 && Math.abs(offset) > .01) {
+        const y = radius * Math.sin(angle);
+        const depth = radius * (Math.cos(angle) - 1);
+        // Move each face onto the cylinder, then project about the picker center.
+        // The outer button stays flat so native scrolling and snap distances do not change.
+        transform = `translateY(${-offset}px) perspective(${wheelPerspective}px) translate3d(0, ${y}px, ${depth}px) rotateX(${-angle}rad)`;
+      } else if (visible) opacity = 1;
+      for (const face of faces) {
+        face.style.transform = transform;
+        face.style.opacity = String(opacity);
+        face.style.visibility = visible ? 'visible' : 'hidden';
+      }
+    });
+  }
+  function stopWheelMotion(side) {
+    const motion = wheelMotions[side];
+    if (motion) cancelAnimationFrame(motion.frame);
+    wheelMotions[side] = null;
+    wheels[side].classList.remove('is-animating');
+  }
+  function selectVisibleUnit(side) {
+    const units = currentCategory().units;
+    const index = Math.max(0, Math.min(units.length - 1, Math.round(wheels[side].scrollTop / rowHeightFor(side))));
+    if (units[index].id !== state[side]) selectUnit(side, units[index].id, false);
+  }
+  function interruptWheelMotion(side) {
+    if (!wheelMotions[side]) return;
+    stopWheelMotion(side);
+    syncWheelPresentation(side);
+    selectVisibleUnit(side);
+  }
+  function animateWheel(side) {
+    const wheel = wheels[side];
+    if (!wheel.clientHeight || alignFrame) return;
+    const target = currentCategory().units.findIndex(unit => unit.id === state[side]) * rowHeightFor(side);
+    const start = wheel.scrollTop;
+    const previous = wheelMotions[side];
+    if (previous) cancelAnimationFrame(previous.frame);
+    const style = getComputedStyle(wheel);
+    const duration = styleNumber(style, '--wheel-duration', 220, 0, 1000);
+    const easing = style.getPropertyValue('--wheel-easing').trim();
+    const reducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+    if (Math.abs(target - start) < .5 || duration === 0 || reducedMotion()) {
+      stopWheelMotion(side);
+      wheel.scrollTop = target;
+      syncWheelPresentation(side);
+      return;
+    }
+    // Keep the destination in state immediately, so fast detents count once.
+    // Only the presentation moves; scroll events must not overwrite the destination.
+    const motion = { frame: 0, started: null };
+    wheelMotions[side] = motion;
+    wheel.classList.add('is-animating');
+    function tick(time) {
+      if (wheelMotions[side] !== motion) return;
+      if (motion.started === null) motion.started = time;
+      const progress = reducedMotion() ? 1 : Math.min(1, (time - motion.started) / duration);
+      const eased = easing === 'linear' ? progress : easing === 'ease-in-out'
+        ? (progress < .5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2)
+        : 1 - (1 - progress) ** 3;
+      wheel.scrollTop = start + (target - start) * eased;
+      syncWheelPresentation(side);
+      if (progress < 1) motion.frame = requestAnimationFrame(tick);
+      else {
+        // Finish at the exact row before restoring native snapping.
+        wheel.scrollTop = target;
+        stopWheelMotion(side);
+        syncWheelPresentation(side);
+      }
+    }
+    motion.frame = requestAnimationFrame(tick);
+  }
   function alignWheels() {
+    for (const side of ['from', 'to']) stopWheelMotion(side);
     cancelAnimationFrame(alignFrame);
     alignFrame = requestAnimationFrame(() => {
       const cat = currentCategory();
       for (const side of ['from', 'to']) {
         const wheel = wheels[side];
         if (!wheel.clientHeight) continue;
-        const rowHeight = parseFloat(getComputedStyle(wheel).getPropertyValue('--row-height')) || 72;
+        const rowHeight = rowHeightFor(side);
         const padding = Math.max(0, (wheel.clientHeight - rowHeight) / 2);
         wheel.style.paddingBlock = `${padding}px`;
         wheel.style.scrollPaddingBlock = `${padding}px`;
         wheel.scrollTop = cat.units.findIndex(unit => unit.id === state[side]) * rowHeight;
+        syncWheelPresentation(side);
       }
       alignFrame = 0;
     });
   }
   function renderConverter() {
+    for (const side of ['from', 'to']) stopWheelMotion(side);
     const cat = currentCategory();
     $('#category-title').textContent = cat.name;
     $('#category-english').textContent = cat.english;
     $('#current-icon').innerHTML = icon(cat.icon);
     for (const side of ['from', 'to']) {
-      wheels[side].innerHTML = cat.units.map(unit => `<button type="button" class="unit-row" data-side="${side}" data-unit="${unit.id}" aria-label="${side === 'from' ? '输入' : '输出'}单位：${escapeHTML(unit.name)} ${escapeHTML(unit.symbol)}" aria-pressed="false" tabindex="-1"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number ${side === 'from' ? 'from-number' : ''}"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></button>`).join('');
+      wheels[side].innerHTML = cat.units.map(unit => `<button type="button" class="unit-row" data-side="${side}" data-unit="${unit.id}" aria-label="${side === 'from' ? '输入' : '输出'}单位：${escapeHTML(unit.name)} ${escapeHTML(unit.symbol)}" aria-pressed="false" tabindex="-1"><span class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number ${side === 'from' ? 'from-number' : ''}"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></span></button>`).join('');
+      focusTracks[side].innerHTML = cat.units.map(unit => `<div class="unit-focus"><div class="unit-face"><span class="unit-name">${escapeHTML(unit.name)}</span><span class="unit-value"><span class="unit-number"></span><span class="unit-symbol">${escapeHTML(unit.symbol)}</span></span></div></div>`).join('');
+      wheelFaces[side] = Array.from(wheels[side].children, (row, index) => [row.firstElementChild, focusTracks[side].children[index].firstElementChild]);
     }
     updateResult();
     alignWheels();
@@ -211,7 +312,7 @@
     if (!currentCategory().units.some(unit => unit.id === unitId)) return;
     state[side] = unitId;
     updateResult();
-    if (reposition) alignWheels();
+    if (reposition) animateWheel(side);
     if (state.tab === 'favorites' || state.search) renderCategories();
   }
   function appendKey(key) {
@@ -333,7 +434,7 @@
       case 'history': showHistory(); break;
       case 'close-modal': $('#modal').close(); break;
       case 'about':
-        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.2.3</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
+        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.3.0</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
         break;
     }
   }
@@ -410,6 +511,7 @@
         const detent = legacy >= 120 && legacy % 120 === 0;
         if (now - lastContinuousWheel < 200 || (!detent && (Math.abs(delta) < 40 || !Number.isInteger(delta) || event.deltaX !== 0))) {
           lastContinuousWheel = now;
+          interruptWheelMotion(side);
           return;
         }
       }
@@ -429,13 +531,14 @@
         // Retry afterwards rather than dropping the final scroll update.
         if (alignFrame) { scheduleSelection(); return; }
         if (!wheels[side].clientHeight) return;
-        const rowHeight = parseFloat(getComputedStyle(wheels[side]).getPropertyValue('--row-height')) || 72;
-        const unit = currentCategory().units[Math.max(0, Math.min(currentCategory().units.length - 1, Math.round(wheels[side].scrollTop / rowHeight)))];
-        if (unit && unit.id !== state[side]) selectUnit(side, unit.id, false);
+        if (wheelMotions[side]) return;
+        syncWheelPresentation(side);
+        selectVisibleUnit(side);
       });
     }
     wheels[side].addEventListener('scroll', scheduleSelection, { passive: true });
     wheels[side].addEventListener('scrollend', scheduleSelection, { passive: true });
+    wheels[side].addEventListener('pointerdown', () => interruptWheelMotion(side), { passive: true });
     wheels[side].addEventListener('keydown', event => {
       const directions = { ArrowUp: -1, ArrowDown: 1, PageUp: -3, PageDown: 3 };
       if (!(event.key in directions)) return;
@@ -451,7 +554,7 @@
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(alignWheels).observe($('#wheels'));
   window.addEventListener('resize', alignWheels);
   if (desktopHost) {
-    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.2.3', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
+    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.3.0', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
   }
   // Local development only: direct file opening has no server or network dependency.
   if (/^https?:$/.test(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname) && typeof EventSource !== 'undefined') {

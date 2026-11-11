@@ -1,7 +1,7 @@
 param([switch]$NoArchive)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
-$version = '0.2.3'
+$version = '0.3.0'
 $sdkVersion = '1.0.4258.31'
 $sdkHash = '56F7F4B8BF9AEE4B8EFEFBBDD4F67D5F74EBD1B100ED0806DA71BF76AF481AA9'
 $cacheRoot = Join-Path $projectRoot '.local\webview2'

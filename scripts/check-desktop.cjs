@@ -7,6 +7,8 @@ const output = path.join(root, 'dist', 'Metrio');
 const manifest = JSON.parse(fs.readFileSync(path.join(output, 'build-manifest.json'), 'utf8').replace(/^\uFEFF/, ''));
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 assert.equal(manifest.version, version);
+assert.ok(!fs.existsSync(path.join(output, 'www', 'devtools')), 'Development tools must not ship in the portable application');
+assert.ok(!fs.readFileSync(path.join(output, 'www', 'index.html'), 'utf8').includes('devtools/'), 'Release HTML must not load development tools');
 for (const file of manifest.files) {
   const fullPath = path.resolve(output, file.path);
   assert.ok(fullPath.startsWith(output + path.sep));

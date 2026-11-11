@@ -1,6 +1,6 @@
 {
   "name": "metrio-local",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "description": "Metrio (Duheng), a local red-and-white unit converter for Windows.",
   "scripts": {

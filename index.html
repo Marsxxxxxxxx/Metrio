@@ -37,8 +37,8 @@
         <div class="conversion-toolbar"><span>输入单位</span><button id="swap-button" class="swap-button" data-action="swap" aria-label="交换输入和输出单位"><span data-icon="swap"></span>交换</button><span>换算结果</span></div>
         <div class="wheels" id="wheels">
           <div class="selection-ribbon" aria-hidden="true">
-            <div id="from-focus" class="unit-focus"><span class="unit-name"></span><span class="unit-value"><span class="unit-number"></span><span class="unit-symbol"></span></span></div>
-            <div id="to-focus" class="unit-focus"><span class="unit-name"></span><span class="unit-value"><span class="unit-number"></span><span class="unit-symbol"></span></span></div>
+            <div class="focus-window"><div id="from-focus-track" class="focus-track"></div></div>
+            <div class="focus-window"><div id="to-focus-track" class="focus-track"></div></div>
             <svg class="ribbon-chevron" viewBox="0 0 30 74" preserveAspectRatio="none"><path d="M3 0 25 37 3 74"/></svg>
           </div>
           <div id="from-wheel" class="unit-wheel" role="group" aria-label="输入单位，滚动或点击选择" tabindex="0"></div>
@@ -56,7 +56,7 @@
         <footer class="converter-footer"><span data-icon="mouse"></span><span>滚动选择单位 · 直接输入数字</span><span class="footer-mark">Metrio</span></footer>
       </section>
     </main>
-    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.2.3</span></footer>
+    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.3.0</span></footer>
   </div>
   <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><h2 id="modal-title"></h2><button class="icon-button" data-action="close-modal" aria-label="关闭"><span data-icon="close"></span></button></div><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

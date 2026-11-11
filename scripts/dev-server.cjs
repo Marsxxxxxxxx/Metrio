@@ -6,14 +6,14 @@ const root = path.resolve(__dirname, '..');
 const port = Number(process.env.PORT || process.argv[2] || 4173);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('PORT must be between 1024 and 65535.');
 const clients = new Set();
-const files = new Set(['index.html', 'src/engine.js', 'src/app.js', 'src/styles.css', 'assets/icon.svg']);
+const files = new Set(['index.html', 'src/engine.js', 'src/app.js', 'src/styles.css', 'assets/icon.svg', 'devtools/style-panel.js', 'devtools/style-panel.css']);
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   if (url.pathname === '/__health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ app: 'metrio-local', version: '0.2.3' }));
+    res.end(JSON.stringify({ app: 'metrio-local', version: '0.3.0' }));
     return;
   }
   if (url.pathname === '/__events') {
@@ -28,7 +28,12 @@ const server = http.createServer((req, res) => {
   catch { res.writeHead(400); res.end(); return; }
   if (!files.has(file)) { res.writeHead(404); res.end('Not found'); return; }
   fs.readFile(path.join(root, file), (error, data) => {
-    if (error) { res.writeHead(500); res.end('Could not read application file'); return; }
+    if (error) { res.writeHead(error.code === 'ENOENT' ? 404 : 500); res.end(error.code === 'ENOENT' ? 'Not found' : 'Could not read application file'); return; }
+    // Optional development UI. The application entry and release assets have no dependency on it.
+    if (file === 'index.html' && url.searchParams.get('debug') !== '0'
+      && fs.existsSync(path.join(root, 'devtools/style-panel.js')) && fs.existsSync(path.join(root, 'devtools/style-panel.css'))) {
+      data = Buffer.from(data.toString('utf8').replace('</head>', '<script defer src="devtools/style-panel.js"></script>\n</head>'));
+    }
     res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
     res.end(req.method === 'HEAD' ? undefined : data);
   });
@@ -53,5 +58,5 @@ server.on('error', error => {
   watcher.close(); clearInterval(heartbeat); process.exitCode = 1;
 });
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Metrio v0.2.3\nLocal: http://127.0.0.1:${port}\nLive reload enabled. Press Ctrl+C to stop.`);
+  console.log(`Metrio v0.3.0\nLocal: http://127.0.0.1:${port}\nLive reload enabled. Press Ctrl+C to stop.`);
 });

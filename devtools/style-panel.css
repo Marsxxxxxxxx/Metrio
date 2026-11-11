@@ -1,0 +1,45 @@
+:host { all: initial; position: fixed; left: 16px; bottom: 16px; z-index: 10000; width: 316px; max-width: calc(100vw - 24px); font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; font-size: 12px; color: #343633; color-scheme: light; }
+:host([data-side='right']) { left: auto; right: 16px; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid #dedfda; border-radius: 5px; padding: 7px 11px; background: white; }
+button:hover { background: #f5f5f2; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #e73a32; outline-offset: 2px; }
+.panel { display: flex; flex-direction: column; max-height: min(690px, calc(100dvh - 32px)); background: #fff; border: 1px solid #dfdfd9; border-top: 3px solid #e73a32; border-radius: 9px; box-shadow: 0 8px 40px #20202026, 0 2px 6px #20202012; overflow: hidden; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px; flex-shrink: 0; }
+.eyebrow { font-size: 9px; letter-spacing: 1.6px; color: #a4a59f; }
+h2 { margin: 4px 0 0; font-size: 17px; font-weight: 500; letter-spacing: .7px; }
+.header-actions { display: flex; gap: 5px; }
+.icon-button { font-size: 20px; padding: 0; width: 29px; height: 29px; border: 0; color: #8c8e87; line-height: 1; }
+.tabs { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 4px; padding: 0 14px; border-bottom: 1px solid #ecece8; flex-shrink: 0; }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; font-size: 11px; padding: 10px 2px; color: #85877f; background: transparent; }
+.tabs button[aria-selected='true'] { color: #e73a32; border-bottom-color: #e73a32; }
+.content { padding: 4px 16px 10px; overflow: auto; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #dcded8 transparent; }
+.field { padding: 12px 0 8px; border-bottom: 1px solid #f0f0ec; }
+.field-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.number { display: inline-flex; align-items: center; gap: 5px; color: #a0a299; font-size: 10px; }
+.number input { width: 61px; height: 25px; border: 1px solid #e2e3dd; border-radius: 4px; padding: 2px 4px; background: #fafaf8; color: #45473f; font-size: 12px; text-align: right; }
+.number > span { width: 16px; }
+.slider { display: block; width: 100%; height: 14px; margin: 0; accent-color: #e73a32; cursor: pointer; }
+.field select { display: block; width: 100%; margin-top: 8px; padding: 6px 8px; background: #fafaf8; border: 1px solid #e2e3dd; border-radius: 4px; font-size: 11px; }
+.color-field { display: flex; align-items: center; gap: 10px; padding: 17px 0; border-bottom: 1px solid #f0f0ec; }
+.color-field label { flex: 1; }
+.color-field output { font: 10px Consolas, monospace; color: #92958b; text-transform: uppercase; }
+input[type='color'] { height: 29px; width: 38px; border: 1px solid #ddd; border-radius: 4px; padding: 2px; background: white; cursor: pointer; }
+footer { padding: 12px 16px 10px; border-top: 1px solid #e9eae3; background: #fafaf7; flex-shrink: 0; }
+.preview { display: flex; align-items: center; gap: 7px; font-size: 11px; }
+.preview input { accent-color: #e73a32; margin: 0; }
+.actions { display: flex; gap: 8px; margin-top: 12px; }
+.actions button { flex: 1; font-size: 11px; }
+.actions .primary { color: #e73a32; border-color: #f0c6c1; background: #fff8f6; }
+.status { color: #7e8475; font-size: 10px; line-height: 1.5; margin: 10px 0 0; min-height: 15px; }
+.shortcut { color: #a5a69f; font-size: 9px; margin: 4px 0 0; letter-spacing: .3px; }
+.launcher { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-color: #e6b6b1; color: #d83a31; box-shadow: 0 3px 18px #2222; }
+.launcher span { font-size: 16px; }
+.export { border-top: 1px solid #e7e8e1; margin-top: 12px; padding-top: 14px; }
+.export label { font-size: 11px; }
+.export textarea { width: 100%; height: 145px; display: block; resize: vertical; border: 1px solid #ddd; border-radius: 4px; background: #fbfbf9; padding: 7px; margin: 8px 0; font: 10px/1.5 Consolas, monospace; }
+.export button { width: 100%; font-size: 11px; }
+.export p { color: #96998e; font-size: 10px; line-height: 1.6; }
+@media (max-width: 600px) { :host { left: 12px; bottom: 12px; width: 300px; } :host([data-side='right']) { right: 12px; } .panel { max-height: calc(100dvh - 24px); } }
