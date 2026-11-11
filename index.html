@@ -21,18 +21,35 @@
         <button type="button" data-mode="phone" aria-pressed="false"><span data-icon="phone"></span>手机</button>
       </div>
     </header>
-    <main id="app" class="app-shell" data-page="converter">
-      <aside class="sidebar" aria-label="换算分类">
-        <div class="sidebar-heading"><div><span class="eyebrow">METRIO · 度衡</span><h1>单位换算<span class="red-dot">.</span></h1></div><button class="icon-button mobile-close" data-action="close-categories" aria-label="返回换算"><span data-icon="close"></span></button></div>
+    <main id="app" class="app-shell" data-page="home">
+      <section id="category-home" class="category-home" aria-label="分类选择">
+        <header class="home-header">
+          <div><span class="eyebrow">METRIO · 度衡</span><h1 id="home-title" tabindex="-1">选择换算分类<span class="red-dot">.</span></h1><p id="home-overview">选择分类，开始换算。</p></div>
+          <div class="header-actions"><button class="icon-button" data-action="history" title="换算记录" aria-label="换算记录"><span data-icon="history"></span></button><button id="home-settings-button" class="icon-button" data-action="settings" title="设置" aria-label="设置"><span data-icon="settings"></span></button></div>
+        </header>
+        <div class="home-tools">
+          <label class="search-box home-search"><span data-icon="search"></span><input id="home-search" type="search" placeholder="搜索分类或单位，例如「长度」「英寸」" autocomplete="off" aria-label="搜索分类菜单"><kbd>⌃K</kbd></label>
+          <div class="home-tabs" role="tablist" aria-label="菜单筛选"><button role="tab" aria-selected="true" data-home-tab="all">全部分类</button><button role="tab" aria-selected="false" data-home-tab="favorites"><span data-icon="star"></span>我的收藏 <span id="home-favorite-count"></span></button></div>
+        </div>
+        <nav id="home-group-nav" class="home-group-nav" aria-label="分类区域"></nav>
+        <div id="home-scroll" class="home-scroll">
+          <button id="resume-conversion" class="resume-conversion" data-action="resume-conversion" hidden></button>
+          <div id="home-sections"></div>
+          <p id="home-search-status" class="sr-only" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="home-footer"><span class="local-status"><i></i>本地换算</span><button class="text-button" data-action="unit-settings">管理分类与单位<span data-icon="arrow-up-right"></span></button></footer>
+      </section>
+      <aside id="category-sidebar" class="sidebar" aria-label="换算分类" hidden>
+        <div class="sidebar-heading"><div><span class="eyebrow">METRIO · 度衡</span><h1>单位换算<span class="red-dot">.</span></h1></div></div>
         <label class="search-box"><span data-icon="search"></span><input id="category-search" type="search" placeholder="搜索分类或单位" autocomplete="off" aria-label="搜索分类或单位"><kbd>⌃K</kbd></label>
         <div class="category-tabs" role="tablist" aria-label="分类筛选"><button id="all-tab" role="tab" aria-selected="true" data-tab="all">全部分类 <span id="category-count"></span></button><button id="favorites-tab" role="tab" aria-selected="false" data-tab="favorites"><span data-icon="star"></span>我的收藏<span id="favorite-count"></span></button></div>
         <nav id="category-list" class="category-list" aria-label="单位分类列表"></nav>
         <div class="sidebar-footer"><span class="local-status"><i></i>本地换算</span><button class="text-button" data-action="about">关于 Metrio<span data-icon="arrow-up-right"></span></button></div>
       </aside>
-      <section class="converter" aria-label="单位换算器">
+      <section id="converter" class="converter" aria-label="单位换算器" hidden>
         <header class="converter-header">
-          <button class="icon-button categories-toggle" data-action="open-categories" aria-label="打开分类列表"><span data-icon="menu"></span></button>
-          <div class="current-category"><span id="current-icon"></span><div><h2 id="category-title">长度</h2><span id="category-english">Length</span></div></div>
+          <button class="icon-button categories-toggle" data-action="open-categories" title="返回分类菜单" aria-label="返回分类菜单"><span data-icon="arrow-left"></span></button>
+          <div class="current-category"><span id="current-icon"></span><div><h2 id="category-title" tabindex="-1">长度</h2><span id="category-english">Length</span></div></div>
           <div class="header-actions"><button class="icon-button" data-action="history" title="换算记录" aria-label="换算记录"><span data-icon="history"></span></button><button id="settings-button" class="icon-button" data-action="settings" title="设置" aria-label="设置"><span data-icon="settings"></span></button></div>
         </header>
         <div class="conversion-toolbar"><span>输入单位</span><button id="swap-button" class="swap-button" data-action="swap" aria-label="交换输入和输出单位"><span data-icon="swap"></span>交换</button><span>换算结果</span></div>
@@ -58,7 +75,7 @@
         <footer class="converter-footer"><span data-icon="mouse"></span><span>滚动选择单位 · 直接输入数字</span><span class="footer-mark">Metrio</span></footer>
       </section>
     </main>
-    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.4.0</span></footer>
+    <footer class="workspace-footer"><span>熟悉的换算，回到手边。</span><span>RED & WHITE <span class="footer-separator">/</span> v0.5.0</span></footer>
   </div>
   <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><div class="modal-title-group"><button id="modal-back" class="icon-button" data-action="settings" aria-label="返回设置" hidden>‹</button><h2 id="modal-title"></h2></div><button class="icon-button" data-action="close-modal" aria-label="关闭"><span data-icon="close"></span></button></div><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

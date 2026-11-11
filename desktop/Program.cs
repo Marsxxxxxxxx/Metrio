@@ -14,8 +14,8 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("Metrio · 度衡")]
 [assembly: AssemblyDescription("Metrio (度衡) — personal unit converter for Windows")]
 [assembly: AssemblyProduct("Metrio · 度衡")]
-[assembly: AssemblyVersion("0.4.0.0")]
-[assembly: AssemblyFileVersion("0.4.0.0")]
+[assembly: AssemblyVersion("0.5.0.0")]
+[assembly: AssemblyFileVersion("0.5.0.0")]
 [assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]
 
 namespace MetrioDesktop
@@ -121,7 +121,7 @@ namespace MetrioDesktop
                 refreshTimer.Stop();
                 if (!closing && webView.CoreWebView2 != null) webView.CoreWebView2.Reload();
             };
-            Log("starting version=0.4.0 mode=" + (development ? "development" : "desktop"));
+            Log("starting version=0.5.0 mode=" + (development ? "development" : "desktop"));
             Log("rendering=" + (softwareRendering ? "software" : "default"));
         }
 
@@ -225,7 +225,7 @@ namespace MetrioDesktop
                 {
                     loading.Visible = false;
                     webView.Focus();
-                    Log("ui-ready categories=" + message["categories"] + " units=" + message["units"]);
+                    Log("ui-ready categories=" + message["categories"] + " units=" + message["units"] + (message.ContainsKey("page") ? " page=" + message["page"] : ""));
                 }
                 else if (development && message.ContainsKey("type") && Convert.ToString(message["type"]) == "metrio-devtools-ready") Log("devtools-ready");
                 else if (development && message.ContainsKey("type") && Convert.ToString(message["type"]) == "metrio-save-styles") SaveStyles(message);

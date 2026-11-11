@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const engine = fs.readFileSync(path.join(root, 'src/engine.js'), 'utf8');
 const application = fs.readFileSync(path.join(root, 'src/app.js'), 'utf8');
-function setup(t, saved, desktop = false, controlledFrames = false) {
+function setup(t, saved, desktop = false, controlledFrames = false, enterConverter = true) {
   const messages = [];
   const window = new Window({ url: desktop ? 'https://vert.example/index.html?desktop=1' : 'https://metrio.test/', settings: {
     enableJavaScriptEvaluation: true,
@@ -44,6 +44,8 @@ function setup(t, saved, desktop = false, controlledFrames = false) {
   window.eval(engine);
   window.eval(application);
   const $ = selector => window.document.querySelector(selector);
+  // Calculator regressions explicitly enter from the new landing menu.
+  if (enterConverter) ($('#resume-conversion').hidden ? $('[data-home-category]') : $('#resume-conversion')).click();
   const click = selector => { assert.ok($(selector), `Missing ${selector}`); $(selector).click(); };
   const input = (value, selector = '#expression') => {
     $(selector).value = value;
@@ -129,8 +131,8 @@ test('Phone navigation, settings and keyboard search change application state', 
   click('[data-mode="phone"]');
   assert.ok($('#app').classList.contains('phone'));
   click('[data-action="open-categories"]');
-  assert.equal($('#app').dataset.page, 'categories');
-  click('[data-category="mass"]');
+  assert.equal($('#app').dataset.page, 'home');
+  click('[data-home-category="mass"]');
   assert.equal($('#app').dataset.page, 'converter');
   click('[data-action="settings"]');
   $('#precision-setting').value = '2';
@@ -138,7 +140,79 @@ test('Phone navigation, settings and keyboard search change application state', 
   click('[data-action="close-modal"]');
   assert.equal($('#to-wheel .selected .unit-number').textContent, '2.2');
   key('k', { ctrlKey: true });
-  assert.equal(window.document.activeElement, $('#category-search'));
+  assert.equal(window.document.activeElement, $('#home-search'));
+});
+
+test('Startup shows every enabled category exactly once across six tile regions and keeps calculator shortcuts inactive', t => {
+  const app = setup(t, undefined, false, false, false);
+  assert.equal(app.$('#app').dataset.page, 'home');
+  assert.equal(app.$('#converter').hidden, true);
+  assert.equal(app.$('#category-sidebar').hidden, true);
+  assert.equal(app.$('#category-home').hidden, false);
+  const tiles = [...app.$('#home-sections').querySelectorAll('[data-home-category]')];
+  assert.equal(app.$('#home-sections').children.length, 6);
+  assert.deepEqual(tiles.map(tile => tile.dataset.homeCategory).sort(), Array.from(app.window.MetrioCore.categories, cat => cat.id).sort());
+  assert.ok(tiles.every(tile => tile.querySelector('svg') && tile.querySelector('.tile-name')));
+  const before = app.window.localStorage.getItem('vert.local.v1');
+  for (const key of ['7', 'f', 's', 'Enter', 'Escape', 'Backspace']) app.key(key);
+  assert.equal(app.window.localStorage.getItem('vert.local.v1'), before);
+  app.click('[data-mode="phone"]');
+  assert.equal(app.$('#app').dataset.page, 'home');
+  app.click('[data-home-category="length"]');
+  assert.equal(app.$('#app').dataset.page, 'converter');
+  assert.equal(app.$('#category-home').hidden, true);
+  assert.equal(app.window.document.activeElement, app.$('#category-title'));
+});
+
+test('Menu search selects a matching source unit and returning preserves search, scroll and the last conversion', t => {
+  const app = setup(t, undefined, false, false, false);
+  app.input('华氏', '#home-search');
+  assert.equal(app.$('#home-group-nav').hidden, true);
+  assert.equal(app.$('[data-home-category="temperature"]').dataset.unit, 'f');
+  app.$('#home-scroll').scrollTop = 120;
+  app.click('[data-home-category="temperature"]');
+  app.input('32');
+  assert.equal(app.$('#from-wheel .selected').dataset.unit, 'f');
+  assert.equal(app.output(), '0');
+  app.click('[data-action="open-categories"]');
+  assert.equal(app.$('#home-search').value, '华氏');
+  assert.equal(app.$('#home-scroll').scrollTop, 120);
+  assert.equal(app.window.document.activeElement, app.$('[data-home-category="temperature"]'));
+  app.input('', '#home-search');
+  assert.equal(app.$('#resume-conversion').hidden, false);
+  app.click('#resume-conversion');
+  assert.equal(app.$('#from-wheel .selected').dataset.unit, 'f');
+  assert.equal(app.$('#expression').value, '32');
+  assert.equal(app.output(), '0');
+  const restored = setup(t, app.window.localStorage.getItem('vert.local.v1'), false, false, false);
+  assert.equal(restored.$('#app').dataset.page, 'home');
+  restored.click('#resume-conversion');
+  assert.equal(restored.output(), '0');
+  assert.equal(restored.$('#from-wheel .selected').dataset.unit, 'f');
+});
+
+test('Menu settings hide categories and units immediately, omit empty regions and retain usable favorites', t => {
+  const core = require('../src/engine.js');
+  const saved = JSON.stringify({ category: 'length', from: 'm', to: 'ft', expression: '1',
+    disabledCategories: core.categories.filter(cat => !['length', 'mass'].includes(cat.id)).map(cat => cat.id),
+    favorites: [{ category: 'length', from: 'm', to: 'ft' }] });
+  const app = setup(t, saved, false, false, false);
+  assert.equal(app.$('#home-sections').children.length, 1);
+  assert.equal(app.$('#home-group-nav').children.length, 1);
+  app.click('#home-settings-button'); app.click('[data-action="unit-settings"]');
+  app.click('[data-enable-category="mass"]');
+  app.click('[data-enable-unit="nm"][data-unit-category="length"]');
+  app.click('[data-action="close-modal"]');
+  assert.equal(app.$('#app').dataset.page, 'home');
+  assert.equal(app.$('[data-home-category="mass"]'), null);
+  app.input('纳米', '#home-search');
+  assert.equal(app.$('[data-home-category]'), null);
+  app.input('', '#home-search'); app.click('[data-home-tab="favorites"]');
+  assert.equal(app.$('#home-group-nav').hidden, true);
+  app.click('[data-home-favorite-index="0"]');
+  assert.equal(app.$('#app').dataset.page, 'converter');
+  assert.equal(app.$('#from-wheel .selected').dataset.unit, 'm');
+  assert.equal(app.$('#to-wheel .selected').dataset.unit, 'ft');
 });
 test('Successful copying saves the displayed result and a history record', async t => {
   const { window, click } = setup(t);
@@ -182,6 +256,7 @@ test('The Windows host receives readiness after the shared interface is initiali
   assert.equal(messages.length, 1);
   assert.equal(messages[0].type, 'metrio-ready');
   assert.equal(messages[0].categories, window.MetrioCore.categories.length);
+  assert.equal(messages[0].page, 'home');
   assert.equal(messages[0].units, window.MetrioCore.categories.reduce((total, cat) => total + cat.units.length, 0));
 });
 

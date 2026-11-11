@@ -28,6 +28,31 @@
     light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
     radiation: '<circle cx="12" cy="12" r="2"/><path d="m10 9-3-5a9 9 0 0 1 10 0l-3 5m1 3h6a9 9 0 0 1-5 8l-3-5m-3 0-3 5a9 9 0 0 1-5-8h6"/>',
     astronomy: '<ellipse cx="12" cy="12" rx="11" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="7"/>',
+    cooking: '<path d="M4 7h13v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3ZM17 8h2a3 3 0 0 1 0 6h-2M7 3v1m4-1v1m4-1v1M4 11h4m-4 4h4"/>',
+    typography: '<path d="M3 5h18M12 5v15M8 20h8M3 5v4m18-4v4"/>',
+    count: '<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/>',
+    'data-rate': '<path d="M3 7h17l-4-4m4 4-4 4M21 17H4l4-4m-4 4 4 4"/>',
+    pace: '<circle cx="12" cy="13" r="8"/><path d="M9 2h6m-3 0v3m7 1 2 2M12 13l3-4"/>',
+    acceleration: '<path d="M3 17h17l-4-4m4 4-4 4M3 11h10M3 5h5"/>',
+    'solid-angle': '<path d="M12 3 3 19q9 5 18 0ZM12 3v17M8 10q4 3 8 0"/>',
+    charge: '<rect x="3" y="6" width="17" height="12" rx="2"/><path d="M20 10h2v4h-2M7 12h4m-2-2v4m5-2h3"/>',
+    current: '<circle cx="12" cy="12" r="9"/><path d="m7 16 5-9 5 9M9 13h6"/>',
+    voltage: '<circle cx="12" cy="12" r="9"/><path d="m7 8 5 9 5-9"/>',
+    resistance: '<path d="M2 12h3l2-5 3 10 4-10 3 10 2-5h3"/>',
+    conductance: '<path d="M3 8h18M3 16h18M7 5 4 8l3 3m10 2 3 3-3 3"/>',
+    capacitance: '<path d="M2 12h7M9 5v14m6-14v14m0-7h7"/>',
+    inductance: '<path d="M2 14h3V9a2 2 0 0 1 4 0v5-5a2 2 0 0 1 4 0v5-5a2 2 0 0 1 4 0v5h5"/>',
+    'magnetic-flux': '<path d="M5 3v11a7 7 0 0 0 14 0V3h-4v11a3 3 0 0 1-6 0V3ZM5 7h4m6 0h4"/>',
+    'magnetic-field': '<path d="M3 5h18M3 12h18M3 19h18M16 2l3 3-3 3m0 1 3 3-3 3m0 1 3 3-3 3"/>',
+    'temperature-delta': '<path d="M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0ZM18 5l3 5h-6"/>',
+    viscosity: '<path d="M12 2c-2 4-8 9-8 13a8 8 0 0 0 16 0c0-4-6-9-8-13ZM8 14h8m-7 4h6"/>',
+    'surface-density': '<path d="m12 2 10 6-10 6L2 8Zm-10 11 10 6 10-6M2 17l10 5 10-5"/>',
+    'linear-density': '<path d="M4 5h16M4 19h16M7 5v14m10-14v14M7 9h10M7 15h10m-5-6v6"/>',
+    amount: '<circle cx="6" cy="7" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="14" cy="18" r="3"/><path d="m9 7 6-1m2 3-2 6M8 10l4 5"/>',
+    molarity: '<path d="M8 2h8M9 2v7l-5 9a3 3 0 0 0 3 4h10a3 3 0 0 0 3-4l-5-9V2M7 15h10M10 18h.01m4 1h.01"/>',
+    illuminance: '<path d="M3 20h18M12 3v3m-7 0 2 2m12-2-2 2M5 15a7 7 0 0 1 14 0M8 15h8"/>',
+    'luminous-flux': '<circle cx="9" cy="12" r="5"/><path d="m14 7 7-4m-7 9h7m-7 5 7 4"/>',
+    'arrow-left': '<path d="M20 12H4m6-6-6 6 6 6"/>',
     search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
     history: '<path d="M3 11a9 9 0 1 1 2 7M3 5v6h6m3-5v6l4 2"/>',
@@ -43,6 +68,15 @@
     'arrow-up-right': '<path d="M6 18 18 6M7 6h11v11"/>'
   };
   function icon(name) { return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.length}</svg>`; }
+  function categoryIcon(cat) { return icon(icons[cat.id] ? cat.id : cat.icon); }
+  const categoryGroups = [
+    { id: 'everyday', name: '日常生活', english: 'EVERYDAY', description: '生活尺度、厨房用量与数字世界', categories: ['length', 'mass', 'temperature', 'area', 'volume', 'time', 'speed', 'fuel', 'cooking', 'count', 'data', 'data-rate', 'typography'] },
+    { id: 'mechanics', name: '运动与力学', english: 'MOTION & MECHANICS', description: '运动、受力与流体', categories: ['pace', 'acceleration', 'angle', 'angular-speed', 'frequency', 'solid-angle', 'force', 'torque', 'pressure', 'flow', 'mass-flow', 'surface-tension', 'momentum', 'inertia', 'pressure-gradient'] },
+    { id: 'electrical', name: '电学与磁学', english: 'ELECTRICITY & MAGNETISM', description: '电路、电池与电磁场', categories: ['charge', 'current', 'voltage', 'resistance', 'conductance', 'capacitance', 'inductance', 'magnetic-flux', 'magnetic-density', 'magnetic-field', 'electric-field', 'resistivity', 'conductivity'] },
+    { id: 'thermal', name: '能量与热学', english: 'ENERGY & HEAT', description: '能量、功率与热量传递', categories: ['energy', 'power', 'temperature-delta', 'heat-capacity', 'specific-heat', 'thermal-conductivity', 'heat-transfer', 'thermal-resistance', 'heat-flux', 'energy-density', 'specific-energy'] },
+    { id: 'materials', name: '材料与化学', english: 'MATERIALS & CHEMISTRY', description: '物质性质、浓度与纺织计量', categories: ['density', 'specific-volume', 'viscosity', 'kinematic-viscosity', 'amount', 'molarity', 'molar-mass', 'ratio', 'linear-density', 'surface-density'] },
+    { id: 'light-space', name: '光学与天文', english: 'LIGHT & SPACE', description: '光照、天文距离与辐射计量', categories: ['illuminance', 'luminance', 'luminous-intensity', 'luminous-flux', 'astronomy', 'radioactivity', 'absorbed-dose', 'equivalent-dose', 'dose-rate'] }
+  ];
   function fillIcons(root = document) { root.querySelectorAll('[data-icon]').forEach(node => { node.innerHTML = icon(node.dataset.icon); }); }
   function escapeHTML(value) { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
   // Keep the original storage key so branding changes do not reset user data.
@@ -71,7 +105,7 @@
     hiddenUnits, disabledCategories,
     favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(validPair).slice(0, 100) : [],
     history: Array.isArray(saved.history) ? saved.history.filter(item => validPair(item) && typeof item.expression === 'string' && item.expression.length <= 160 && Number.isFinite(item.time)).slice(0, 30) : [],
-    tab: 'all', search: '', fresh: true, mode: 'desktop'
+    tab: 'all', search: '', homeTab: 'all', homeSearch: '', fresh: true, mode: 'desktop'
   };
   let toastTimer;
   let announceTimer;
@@ -79,6 +113,8 @@
   let storageWarned = false;
   let result = { input: 1, value: 1, error: '' };
   const app = $('#app');
+  let hasConversion = validPair(saved);
+  let homeScrollTop = 0;
   const expression = $('#expression');
   const wheels = { from: $('#from-wheel'), to: $('#to-wheel') };
   const focusTracks = { from: $('#from-focus-track'), to: $('#to-focus-track') };
@@ -179,11 +215,76 @@
     }, 350);
     save();
   }
+  function homeTile(cat, unit, matchCount = 0) {
+    const detail = unit ? `${unit.name} · ${unit.symbol}${matchCount > 1 ? ` 等 ${matchCount} 项` : ''}` : `${visibleUnits(cat).length} 个单位`;
+    return `<button type="button" class="category-tile" data-home-category="${cat.id}" ${unit ? `data-unit="${unit.id}"` : ''} aria-label="${escapeHTML(cat.name + '，' + detail)}">${categoryIcon(cat)}<span class="tile-name">${cat.name}</span><small>${escapeHTML(detail)}</small></button>`;
+  }
+  function renderHome() {
+    const query = state.homeSearch.trim().toLowerCase();
+    const cats = activeCategories();
+    const activeIds = new Set(cats.map(cat => cat.id));
+    const groups = categoryGroups.map(group => ({ ...group, items: group.categories.filter(id => activeIds.has(id)).map(id => Core.getCategory(id)) })).filter(group => group.items.length);
+    $('#home-overview').textContent = `${groups.length} 个区域 · ${cats.length} 个分类 · ${cats.reduce((sum, cat) => sum + visibleUnits(cat).length, 0)} 个单位`;
+    $('#home-favorite-count').textContent = state.favorites.length || '';
+    document.querySelectorAll('[data-home-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.homeTab === state.homeTab)));
+    const nav = $('#home-group-nav');
+    nav.hidden = Boolean(query) || state.homeTab !== 'all';
+    nav.innerHTML = groups.map(group => `<button type="button" data-home-group="${group.id}">${group.name}</button>`).join('');
+    const resume = $('#resume-conversion');
+    resume.hidden = !hasConversion || Boolean(query) || state.homeTab !== 'all';
+    resume.innerHTML = `${categoryIcon(currentCategory())}<span><small>继续上次换算</small><strong>${currentCategory().name}<span>${escapeHTML(currentUnit('from').symbol)} → ${escapeHTML(currentUnit('to').symbol)}</span></strong></span>${icon('arrow-up-right')}`;
+    let found = 0;
+    let html = '';
+    if (state.homeTab === 'favorites') {
+      const tiles = state.favorites.map((pair, index) => {
+        const cat = Core.getCategory(pair.category);
+        const from = cat.units.find(unit => unit.id === pair.from), to = cat.units.find(unit => unit.id === pair.to);
+        if (query && !`${cat.name} ${cat.english} ${from.name} ${from.symbol} ${to.name} ${to.symbol}`.toLowerCase().includes(query)) return '';
+        found++;
+        return `<button type="button" class="category-tile favorite-tile" data-home-favorite-index="${index}" ${pairEnabled(pair) ? '' : 'disabled title="在设置 → 单位管理中重新开启"'}>${categoryIcon(cat)}<span class="tile-name">${escapeHTML(from.symbol)} → ${escapeHTML(to.symbol)}</span><small>${cat.name}${pairEnabled(pair) ? '' : ' · 已关闭'}</small></button>`;
+      }).join('');
+      if (found) html = `<section class="category-region"><div class="region-heading"><h2>我的收藏</h2><span>${found} 个换算</span></div><div class="category-grid">${tiles}</div></section>`;
+    } else {
+      for (const group of groups) {
+        const tiles = group.items.map(cat => {
+          if (!query || `${cat.name} ${cat.english} ${group.name}`.toLowerCase().includes(query)) return homeTile(cat);
+          const matches = visibleUnits(cat).filter(unit => `${unit.name} ${unit.symbol} ${unit.aliases}`.toLowerCase().includes(query));
+          return matches.length ? homeTile(cat, matches[0], matches.length) : '';
+        }).filter(Boolean);
+        if (!tiles.length) continue;
+        found += tiles.length;
+        html += `<section class="category-region" aria-labelledby="home-group-${group.id}"><div class="region-heading"><div><h2 id="home-group-${group.id}" tabindex="-1">${group.name}<small>${group.english}</small></h2><p>${group.description}</p></div><span>${tiles.length} 类</span></div><div class="category-grid">${tiles.join('')}</div></section>`;
+      }
+    }
+    $('#home-sections').innerHTML = html || `<div class="empty-state">${icon(state.homeTab === 'favorites' ? 'star' : 'search')}${state.homeTab === 'favorites' && !query ? '还没有收藏的换算<br>进入分类，点击键盘上的星标即可收藏。' : '没有找到匹配的分类或单位<br><button class="text-button" data-action="unit-settings">到单位管理中查找</button>'}</div>`;
+    $('#home-search-status').textContent = query ? `找到 ${found} 个${state.homeTab === 'favorites' ? '收藏' : '分类'}` : '';
+  }
+  function showHome() {
+    for (const side of ['from', 'to']) stopWheelMotion(side);
+    cancelAnimationFrame(alignFrame);
+    alignFrame = 0;
+    app.dataset.page = 'home';
+    $('#category-home').hidden = false;
+    $('#category-sidebar').hidden = true;
+    $('#converter').hidden = true;
+    renderHome();
+    $('#home-scroll').scrollTop = homeScrollTop;
+    ($(`[data-home-category="${state.category}"]`) || $('#home-title')).focus({ preventScroll: true });
+  }
+  function showConverter() {
+    if (app.dataset.page === 'home') homeScrollTop = $('#home-scroll').scrollTop;
+    hasConversion = true;
+    app.dataset.page = 'converter';
+    $('#category-home').hidden = true;
+    $('#category-sidebar').hidden = false;
+    $('#converter').hidden = false;
+  }
   function categoryButton(cat, unit) {
     const selected = cat.id === state.category && (!unit || state.from === unit.id);
-    return `<button type="button" class="category-item ${selected ? 'selected' : ''}" data-category="${cat.id}" ${unit ? `data-unit="${unit.id}"` : ''} ${selected ? 'aria-current="true"' : ''}>${icon(cat.icon)}<span class="category-copy"><strong>${unit ? escapeHTML(unit.name) : cat.name}</strong><small>${unit ? `${cat.name} · ${escapeHTML(unit.symbol)}` : cat.english}</small></span><span class="category-meta">${unit ? '↗' : String(visibleUnits(cat).length).padStart(2, '0')}</span></button>`;
+    return `<button type="button" class="category-item ${selected ? 'selected' : ''}" data-category="${cat.id}" ${unit ? `data-unit="${unit.id}"` : ''} ${selected ? 'aria-current="true"' : ''}>${categoryIcon(cat)}<span class="category-copy"><strong>${unit ? escapeHTML(unit.name) : cat.name}</strong><small>${unit ? `${cat.name} · ${escapeHTML(unit.symbol)}` : cat.english}</small></span><span class="category-meta">${unit ? '↗' : String(visibleUnits(cat).length).padStart(2, '0')}</span></button>`;
   }
   function renderCategories() {
+    renderHome();
     $('#category-count').textContent = activeCategories().length;
     $('#favorite-count').textContent = state.favorites.length || '';
     document.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === state.tab)));
@@ -194,7 +295,7 @@
         const cat = Core.getCategory(pair.category);
         const from = cat.units.find(unit => unit.id === pair.from);
         const to = cat.units.find(unit => unit.id === pair.to);
-        return `<button class="category-item ${pairKey(pair) === pairKey(state) ? 'selected' : ''}" data-favorite-index="${index}" ${pairEnabled(pair) ? '' : 'disabled title="在设置 → 单位管理中重新开启"'}>${icon(cat.icon)}<span class="category-copy"><strong>${escapeHTML(from.symbol)} → ${escapeHTML(to.symbol)}</strong><small>${cat.name} · ${escapeHTML(from.name)} / ${escapeHTML(to.name)}${pairEnabled(pair) ? '' : ' · 已关闭'}</small></span></button>`;
+        return `<button class="category-item ${pairKey(pair) === pairKey(state) ? 'selected' : ''}" data-favorite-index="${index}" ${pairEnabled(pair) ? '' : 'disabled title="在设置 → 单位管理中重新开启"'}>${categoryIcon(cat)}<span class="category-copy"><strong>${escapeHTML(from.symbol)} → ${escapeHTML(to.symbol)}</strong><small>${cat.name} · ${escapeHTML(from.name)} / ${escapeHTML(to.name)}${pairEnabled(pair) ? '' : ' · 已关闭'}</small></span></button>`;
       }).join('');
       if (!html) html = `<div class="empty-state">${icon('star')}常用的换算，留在这里。<br>点击键盘上的星标即可收藏。</div>`;
     } else if (query) {
@@ -304,6 +405,7 @@
   function alignWheels() {
     for (const side of ['from', 'to']) stopWheelMotion(side);
     cancelAnimationFrame(alignFrame);
+    if (app.dataset.page !== 'converter') { alignFrame = 0; return; }
     alignFrame = requestAnimationFrame(() => {
       const units = visibleUnits();
       for (const side of ['from', 'to']) {
@@ -325,7 +427,7 @@
     const units = visibleUnits(cat);
     $('#category-title').textContent = cat.name;
     $('#category-english').textContent = cat.english;
-    $('#current-icon').innerHTML = icon(cat.icon);
+    $('#current-icon').innerHTML = categoryIcon(cat);
     $('#category-note').textContent = cat.note || '';
     $('#category-note').hidden = !cat.note;
     for (const side of ['from', 'to']) {
@@ -345,9 +447,10 @@
     state.to = units.some(unit => unit.id === toId) ? toId : units.some(unit => unit.id === cat.defaults[1]) ? cat.defaults[1] : units[1].id;
     if (state.from === state.to && !toId) state.to = units.find(unit => unit.id !== state.from).id;
     state.fresh = true;
-    app.dataset.page = 'converter';
+    showConverter();
     renderCategories();
     renderConverter();
+    if (!$('#modal').open) $('#category-title').focus({ preventScroll: true });
   }
   function selectUnit(side, unitId, reposition = true) {
     if (!visibleUnits().some(unit => unit.id === unitId)) return;
@@ -416,7 +519,7 @@
       const matches = cat.units.filter(unit => !query || categoryMatch || `${unit.name} ${unit.symbol} ${unit.aliases}`.toLowerCase().includes(query));
       if (!matches.length) continue;
       const enabled = !state.disabledCategories.includes(cat.id);
-      html += `<details class="unit-group" data-unit-group="${cat.id}" ${query || openUnitGroups.has(cat.id) ? 'open' : ''}><summary>${icon(cat.icon)}<span class="unit-group-name">${cat.name}<small>${cat.english}</small></span><span class="unit-group-count" data-unit-count="${cat.id}"></span></summary><div class="unit-group-tools"><label class="category-switch"><input type="checkbox" data-enable-category="${cat.id}" aria-label="开启${cat.name}分类" ${enabled ? 'checked' : ''}>开启此分类</label><div><button data-unit-preset="all" data-unit-category="${cat.id}">本类全选</button><button data-unit-preset="common" data-unit-category="${cat.id}">仅常用</button></div></div><div class="unit-options">${matches.map(unit => `<label class="unit-option"><input type="checkbox" data-enable-unit="${unit.id}" data-unit-category="${cat.id}" aria-label="${escapeHTML(cat.name + '：' + unit.name + ' ' + unit.symbol)}" ${state.hiddenUnits[cat.id].includes(unit.id) ? '' : 'checked'}><span>${escapeHTML(unit.name)}<small>${escapeHTML(unit.symbol)}</small></span></label>`).join('')}</div>${cat.note ? `<p class="unit-definition-note">${escapeHTML(cat.note)}</p>` : ''}</details>`;
+      html += `<details class="unit-group" data-unit-group="${cat.id}" ${query || openUnitGroups.has(cat.id) ? 'open' : ''}><summary>${categoryIcon(cat)}<span class="unit-group-name">${cat.name}<small>${cat.english}</small></span><span class="unit-group-count" data-unit-count="${cat.id}"></span></summary><div class="unit-group-tools"><label class="category-switch"><input type="checkbox" data-enable-category="${cat.id}" aria-label="开启${cat.name}分类" ${enabled ? 'checked' : ''}>开启此分类</label><div><button data-unit-preset="all" data-unit-category="${cat.id}">本类全选</button><button data-unit-preset="common" data-unit-category="${cat.id}">仅常用</button></div></div><div class="unit-options">${matches.map(unit => `<label class="unit-option"><input type="checkbox" data-enable-unit="${unit.id}" data-unit-category="${cat.id}" aria-label="${escapeHTML(cat.name + '：' + unit.name + ' ' + unit.symbol)}" ${state.hiddenUnits[cat.id].includes(unit.id) ? '' : 'checked'}><span>${escapeHTML(unit.name)}<small>${escapeHTML(unit.symbol)}</small></span></label>`).join('')}</div>${cat.note ? `<p class="unit-definition-note">${escapeHTML(cat.note)}</p>` : ''}</details>`;
     }
     $('#unit-manager-groups').innerHTML = html || '<p class="empty-state">没有找到匹配的分类或单位。</p>';
     $('#unit-manager-groups').querySelectorAll('details').forEach(details => details.addEventListener('toggle', () => {
@@ -486,8 +589,8 @@
   }
   function performAction(action) {
     switch (action) {
-      case 'open-categories': app.dataset.page = 'categories'; break;
-      case 'close-categories': app.dataset.page = 'converter'; alignWheels(); break;
+      case 'open-categories': showHome(); break;
+      case 'resume-conversion': chooseCategory(state.category, state.from, state.to); break;
       case 'clear': state.expression = '0'; state.fresh = true; updateResult(); break;
       case 'backspace': state.expression = state.expression.slice(0, -1) || '0'; state.fresh = false; updateResult(); break;
       case 'sign': {
@@ -541,7 +644,7 @@
       case 'history': showHistory(); break;
       case 'close-modal': $('#modal').close(); break;
       case 'about':
-        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.4.0</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
+        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.5.0</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
         break;
     }
   }
@@ -549,7 +652,19 @@
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
     const data = button.dataset;
-    if (data.unitPreset) {
+    if (data.homeGroup) {
+      const heading = $(`#home-group-${data.homeGroup}`);
+      const scroller = $('#home-scroll');
+      heading?.focus({ preventScroll: true });
+      if (heading) scroller.scrollTo({ top: scroller.scrollTop + heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 22, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    } else if (data.homeTab) {
+      state.homeTab = data.homeTab; renderHome(); $('#home-scroll').scrollTop = 0;
+    } else if (data.homeCategory) {
+      chooseCategory(data.homeCategory, data.unit);
+    } else if (data.homeFavoriteIndex !== undefined) {
+      const pair = state.favorites[Number(data.homeFavoriteIndex)];
+      if (pair && pairEnabled(pair)) chooseCategory(pair.category, pair.from, pair.to);
+    } else if (data.unitPreset) {
       const cat = Core.getCategory(data.unitCategory);
       state.hiddenUnits[cat.id] = data.unitPreset === 'all' ? [] : cat.units.filter(unit => !cat.common.includes(unit.id)).map(unit => unit.id);
       applyUnitPreferences(data.unitPreset === 'all' ? `${cat.name}的全部单位已开启。` : `${cat.name}已保留常用单位。`);
@@ -567,12 +682,12 @@
     } else if (data.mode) {
       state.mode = data.mode;
       app.classList.toggle('phone', data.mode === 'phone');
-      app.dataset.page = 'converter';
       document.querySelectorAll('[data-mode]').forEach(node => { node.classList.toggle('active', node === button); node.setAttribute('aria-pressed', String(node === button)); });
       alignWheels();
     }
   });
   $('#category-search').addEventListener('input', event => { state.search = event.target.value; renderCategories(); });
+  $('#home-search').addEventListener('input', event => { state.homeSearch = event.target.value; renderHome(); $('#home-scroll').scrollTop = 0; });
   document.addEventListener('input', event => { if (event.target.id === 'unit-search') { unitSearch = event.target.value; renderUnitGroups(); } });
   expression.addEventListener('input', () => {
     const selection = expression.selectionStart;
@@ -591,12 +706,13 @@
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !$('#modal').open) {
       event.preventDefault();
-      app.dataset.page = 'categories';
-      $('#category-search').focus();
+      if (app.dataset.page !== 'home') showHome();
+      $('#home-search').focus();
       return;
     }
     if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
     if ($('#modal').open) return;
+    if (app.dataset.page !== 'converter') return;
     const editing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName);
     if (editing && event.target !== expression) return;
     if (event.key === 'Enter') {
@@ -614,6 +730,7 @@
     let frame = 0;
     let lastContinuousWheel = -Infinity;
     wheels[side].addEventListener('wheel', event => {
+      if (app.dataset.page !== 'converter') return;
       const mode = event.deltaMode;
       const delta = event.deltaY;
       if (event.ctrlKey || event.metaKey || event.shiftKey || !event.cancelable || !Number.isFinite(delta) || delta === 0 || Math.abs(event.deltaX) >= Math.abs(delta)) return;
@@ -644,7 +761,7 @@
         // A resize or category change can realign both wheels in the same frame.
         // Retry afterwards rather than dropping the final scroll update.
         if (alignFrame) { scheduleSelection(); return; }
-        if (!wheels[side].clientHeight) return;
+        if (app.dataset.page !== 'converter' || !wheels[side].clientHeight) return;
         if (wheelMotions[side]) return;
         syncWheelPresentation(side);
         selectVisibleUnit(side);
@@ -669,7 +786,7 @@
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(alignWheels).observe($('#wheels'));
   window.addEventListener('resize', alignWheels);
   if (desktopHost) {
-    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.4.0', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
+    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.5.0', page: app.dataset.page, categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
   }
   // Local development only: direct file opening has no server or network dependency.
   if (/^https?:$/.test(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname) && typeof EventSource !== 'undefined') {

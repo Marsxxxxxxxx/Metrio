@@ -33,6 +33,7 @@ function setup(t, saved) {
   window.eval(fs.readFileSync(path.join(root, 'src/engine.js'), 'utf8'));
   window.eval(fs.readFileSync(path.join(root, 'src/app.js'), 'utf8'));
   const $ = selector => window.document.querySelector(selector);
+  $('[data-home-category="length"]').click();
   const ui = selector => $('#metrio-devtools').shadowRoot.querySelector(selector);
   const mount = () => { window.eval(fs.readFileSync(panelPath, 'utf8')); flush(); };
   const change = (name, value, event = 'input') => {
