@@ -1,7 +1,7 @@
 param([switch]$NoArchive)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
-$version = '0.3.0'
+$version = '0.3.1'
 $sdkVersion = '1.0.4258.31'
 $sdkHash = '56F7F4B8BF9AEE4B8EFEFBBDD4F67D5F74EBD1B100ED0806DA71BF76AF481AA9'
 $cacheRoot = Join-Path $projectRoot '.local\webview2'
@@ -32,7 +32,8 @@ $arguments = @(
     '/reference:System.Windows.Forms.dll', '/reference:System.Web.Extensions.dll',
     ('/reference:' + (Join-Path $assemblyRoot 'Microsoft.Web.WebView2.Core.dll')),
     ('/reference:' + (Join-Path $assemblyRoot 'Microsoft.Web.WebView2.WinForms.dll')),
-    (Join-Path $projectRoot 'desktop\Program.cs')
+    (Join-Path $projectRoot 'desktop\Program.cs'),
+    (Join-Path $projectRoot 'desktop\StyleSettingsStore.cs')
 )
 & $compiler @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Desktop compilation failed.' }
@@ -43,7 +44,7 @@ foreach ($assembly in @('Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebVie
 Copy-Item -LiteralPath (Join-Path $sdkRoot 'runtimes\win-x64\native\WebView2Loader.dll') -Destination $outputRoot -Force
 $webRoot = Join-Path $outputRoot 'www'
 New-Item -ItemType Directory -Force -Path $webRoot, (Join-Path $webRoot 'src'), (Join-Path $webRoot 'assets') | Out-Null
-foreach ($relativePath in @('index.html', 'src\app.js', 'src\engine.js', 'src\styles.css', 'assets\icon.svg')) {
+foreach ($relativePath in @('index.html', 'src\app.js', 'src\engine.js', 'src\styles.css', 'src\user-styles.css', 'assets\icon.svg')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $relativePath) -Destination (Join-Path $webRoot $relativePath) -Force
 }
 $licenses = Join-Path $outputRoot 'licenses'

@@ -180,8 +180,8 @@
   function syncWheelPresentation(side) {
     const rowHeight = rowHeightFor(side);
     const style = getComputedStyle(wheels[side]);
-    const wheelMaxAngle = styleNumber(style, '--wheel-max-angle', 5, 0, 5) * Math.PI / 180;
-    const wheelPerspective = styleNumber(style, '--wheel-perspective', 480, 200, 2000);
+    const wheelMaxAngle = styleNumber(style, '--wheel-max-angle', 5, 0, 90) * Math.PI / 180;
+    const wheelPerspective = styleNumber(style, '--wheel-perspective', 480, 80, 5000);
     const scrollTop = wheels[side].scrollTop;
     // Spread the shallow curve across the visible wheel, including partial edge rows.
     const visibleRadius = Math.max(rowHeight, (wheels[side].clientHeight + rowHeight) / 2);
@@ -232,7 +232,7 @@
     const previous = wheelMotions[side];
     if (previous) cancelAnimationFrame(previous.frame);
     const style = getComputedStyle(wheel);
-    const duration = styleNumber(style, '--wheel-duration', 220, 0, 1000);
+    const duration = styleNumber(style, '--wheel-duration', 220, 0, 3000);
     const easing = style.getPropertyValue('--wheel-easing').trim();
     const reducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
     if (Math.abs(target - start) < .5 || duration === 0 || reducedMotion()) {
@@ -434,7 +434,7 @@
       case 'history': showHistory(); break;
       case 'close-modal': $('#modal').close(); break;
       case 'about':
-        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.3.0</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
+        showModal('关于 Metrio · 度衡', `<div class="about-logo"><img src="assets/icon.svg" alt=""><div><strong>Metrio</strong><small>度衡 · Unit Converter · v0.3.1</small></div></div><div class="about-copy"><p>度衡（Metrio）是一个参考经典 VERT 界面的个人换算工具。保留红白界面、双列滚动与折角选中条，让熟悉的换算回到手边。</p><p>当前支持 ${Core.categories.length} 个分类、${Core.categories.reduce((total, cat) => total + cat.units.length, 0)} 个单位。所有换算在本机完成。</p><p>原设计：Andrej Mihelic<br><a href="https://dribbble.com/shots/1707405-Vert-Unit-and-Currency-Converter" target="_blank" rel="noopener noreferrer">查看原设计 ↗</a></p><p class="modal-note">个人重实现，与原作者无关联。<br>本版尚未加入汇率、衣物尺码和配料重量换算。</p></div>`);
         break;
     }
   }
@@ -554,7 +554,7 @@
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(alignWheels).observe($('#wheels'));
   window.addEventListener('resize', alignWheels);
   if (desktopHost) {
-    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.3.0', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
+    window.chrome.webview.postMessage({ type: 'metrio-ready', version: '0.3.1', categories: Core.categories.length, units: Core.categories.reduce((total, cat) => total + cat.units.length, 0) });
   }
   // Local development only: direct file opening has no server or network dependency.
   if (/^https?:$/.test(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname) && typeof EventSource !== 'undefined') {

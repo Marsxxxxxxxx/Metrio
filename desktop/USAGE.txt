@@ -1,4 +1,4 @@
-Metrio · 度衡 0.3.0 — Windows 桌面版（64 位）
+Metrio · 度衡 0.3.1 — Windows 桌面版（64 位）
 
 双击 Metrio.exe 即可使用，不需要启动浏览器或本地服务器。
 移动或复制时请保留整个 Metrio 文件夹，不能只复制 Metrio.exe。

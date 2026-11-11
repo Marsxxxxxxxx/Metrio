@@ -14,8 +14,8 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("Metrio · 度衡")]
 [assembly: AssemblyDescription("Metrio (度衡) — personal unit converter for Windows")]
 [assembly: AssemblyProduct("Metrio · 度衡")]
-[assembly: AssemblyVersion("0.3.0.0")]
-[assembly: AssemblyFileVersion("0.3.0.0")]
+[assembly: AssemblyVersion("0.3.1.0")]
+[assembly: AssemblyFileVersion("0.3.1.0")]
 [assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]
 
 namespace MetrioDesktop
@@ -121,7 +121,7 @@ namespace MetrioDesktop
                 refreshTimer.Stop();
                 if (!closing && webView.CoreWebView2 != null) webView.CoreWebView2.Reload();
             };
-            Log("starting version=0.3.0 mode=" + (development ? "development" : "desktop"));
+            Log("starting version=0.3.1 mode=" + (development ? "development" : "desktop"));
             Log("rendering=" + (softwareRendering ? "software" : "default"));
         }
 
@@ -180,15 +180,22 @@ namespace MetrioDesktop
                 {
                     if (!IsLocalPage(args.Request.Uri))
                         args.Response = environment.CreateWebResourceResponse(new MemoryStream(), 403, "External resources are disabled", "Content-Type: text/plain");
+                    else if (new Uri(args.Request.Uri).AbsolutePath == "/src/user-styles.css")
+                    {
+                        string file = Path.Combine(contentRoot, "src", "user-styles.css");
+                        byte[] bytes = File.Exists(file) ? File.ReadAllBytes(file) : new byte[0];
+                        args.Response = environment.CreateWebResourceResponse(new MemoryStream(bytes), 200, "OK", "Content-Type: text/css; charset=utf-8\r\nCache-Control: no-store");
+                    }
                 };
                 if (development)
                 {
                     WatchSourceFiles();
-                    if (File.Exists(Path.Combine(contentRoot, "devtools", "style-panel.js")) && File.Exists(Path.Combine(contentRoot, "devtools", "style-panel.css")))
+                    if (StyleSettingsStore.Available(contentRoot))
                     {
                         try
                         {
-                            await core.AddScriptToExecuteOnDocumentCreatedAsync("document.addEventListener('DOMContentLoaded', function () { if (location.hostname !== 'vert.example' || new URLSearchParams(location.search).get('debug') === '0') return; var script = document.createElement('script'); script.src = '/devtools/style-panel.js'; script.onerror = function () { script.remove(); }; document.head.appendChild(script); }, { once: true });");
+                            string schema = serializer.Serialize(File.ReadAllText(Path.Combine(contentRoot, "devtools", "style-schema.json")));
+                            await core.AddScriptToExecuteOnDocumentCreatedAsync("document.addEventListener('DOMContentLoaded', function () { if (location.hostname !== 'vert.example' || new URLSearchParams(location.search).get('debug') === '0') return; var schema = document.createElement('script'); schema.id = 'metrio-style-schema'; schema.type = 'application/json'; schema.textContent = " + schema + "; document.head.appendChild(schema); var script = document.createElement('script'); script.src = '/devtools/style-panel.js'; script.onerror = function () { script.remove(); }; document.head.appendChild(script); }, { once: true });");
                         }
                         catch (Exception error) { Log("devtools-unavailable " + error.Message); }
                     }
@@ -221,8 +228,31 @@ namespace MetrioDesktop
                     Log("ui-ready categories=" + message["categories"] + " units=" + message["units"]);
                 }
                 else if (development && message.ContainsKey("type") && Convert.ToString(message["type"]) == "metrio-devtools-ready") Log("devtools-ready");
+                else if (development && message.ContainsKey("type") && Convert.ToString(message["type"]) == "metrio-save-styles") SaveStyles(message);
             }
             catch (Exception error) { Log("invalid-ready-message " + error.Message); }
+        }
+
+        private void SaveStyles(Dictionary<string, object> message)
+        {
+            string requestId = message.ContainsKey("requestId") ? message["requestId"] as string : null;
+            if (requestId == null || !System.Text.RegularExpressions.Regex.IsMatch(requestId, "^[a-zA-Z0-9-]{1,64}$")) return;
+            Dictionary<string, object> reply;
+            try
+            {
+                if (message.Count != 3 || !message.ContainsKey("values")) throw new ArgumentException("无效的保存请求。");
+                reply = StyleSettingsStore.Save(contentRoot, message["values"] as Dictionary<string, object>);
+                reply["ok"] = true;
+                Log("styles-saved desktop=" + reply["desktopUpdated"]);
+            }
+            catch (Exception error)
+            {
+                reply = new Dictionary<string, object> { { "ok", false }, { "error", error.Message } };
+                Log("styles-save-failed " + error.Message);
+            }
+            reply["type"] = "metrio-style-save-result";
+            reply["requestId"] = requestId;
+            webView.CoreWebView2.PostWebMessageAsJson(serializer.Serialize(reply));
         }
 
         private static bool IsLocalPage(string value)
@@ -254,6 +284,8 @@ namespace MetrioDesktop
             FileSystemEventHandler onChange = delegate(object sender, FileSystemEventArgs args)
             {
                 string relative = args.FullPath.Substring(contentRoot.TrimEnd(Path.DirectorySeparatorChar).Length).TrimStart(Path.DirectorySeparatorChar).Replace('\\', '/');
+                // The save reply applies this stylesheet without interrupting the request with a reload.
+                if (relative.Equals("src/user-styles.css", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("src/user-styles.css.", StringComparison.OrdinalIgnoreCase)) return;
                 if (relative != "index.html" && !relative.StartsWith("src/", StringComparison.OrdinalIgnoreCase) && !relative.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) && !relative.StartsWith("devtools/", StringComparison.OrdinalIgnoreCase)) return;
                 if (closing || !IsHandleCreated) return;
                 try { BeginInvoke(new Action(delegate { refreshTimer.Stop(); refreshTimer.Start(); })); }

@@ -89,7 +89,7 @@ h2 { margin: 0; font-weight: 400; }
 .swap-button { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #a2a39f; padding: 8px 10px; }
 .swap-button .icon { width: 14px; height: 14px; }
 .swap-button:hover { color: var(--red); }
-.wheels { position: relative; display: grid; grid-template-columns: 1fr 1fr; min-height: 144px; flex: 1 1 260px; isolation: isolate; }
+.wheels { position: relative; display: grid; grid-template-columns: 1fr 1fr; min-height: calc(var(--row-height) * 2); flex: 1 1 260px; isolation: isolate; }
 .selection-ribbon { position: absolute; z-index: 3; pointer-events: none; background: var(--red); height: var(--row-height); top: calc(50% - var(--row-height) / 2); width: 100%; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
 .focus-window { position: relative; min-width: 0; height: 100%; overflow: hidden; }
 .focus-track { will-change: transform; }
@@ -146,7 +146,7 @@ h2 { margin: 0; font-weight: 400; }
 .categories-toggle, .mobile-close { display: none; }
 .app-shell.phone { width: 390px; height: 760px; max-height: calc(100dvh - 137px); min-height: 620px; grid-template-columns: 1fr; border-radius: 10px; }
 .app-shell.phone .sidebar { display: none; }
-.app-shell.phone .wheels { --row-height: 64px; min-height: 128px; }
+.app-shell.phone .wheels { --row-height: 64px; }
 .app-shell.phone .converter-header { padding: 0 15px; flex-basis: 61px; gap: 7px; }
 .app-shell.phone .current-category { gap: 8px; margin-right: auto; }
 .app-shell.phone .current-category > span { display: none; }
@@ -206,7 +206,7 @@ dialog::backdrop { background: #30302d45; backdrop-filter: blur(3px); }
   .workspace { padding: 0; }
   .workspace-header, .workspace-footer { display: none; }
   .app-shell, .app-shell.phone, .app-shell:not(.phone) { width: 100%; height: 100dvh; max-height: none; min-height: 580px; border: 0; border-radius: 0; grid-template-columns: 1fr; }
-  .wheels { --row-height: 64px; min-height: 128px; }
+  .wheels { --row-height: 64px; }
   .app-shell .sidebar { display: none; }
   .app-shell[data-page='categories'] .sidebar { display: flex; border: 0; }
   .app-shell[data-page='categories'] .converter { display: none; }
@@ -240,7 +240,7 @@ dialog::backdrop { background: #30302d45; backdrop-filter: blur(3px); }
 .desktop-app .expression-label { white-space: nowrap; }
 .desktop-app .keypad { flex-basis: clamp(184px, 30vh, 264px); }
 .desktop-app .converter-footer { flex-basis: 27px; }
-.desktop-app .wheels { --row-height: 64px; min-height: 128px; }
+.desktop-app .wheels { --row-height: 64px; }
 @media (max-width: 600px) {
   .desktop-app .workspace { padding: 0; }
   .desktop-app .app-shell, .desktop-app .app-shell.phone { width: 100%; max-height: none; }

@@ -4,23 +4,9 @@
 
   const storageKey = 'metrio.dev.styles.v1';
   const styleUrl = new URL('style-panel.css', document.currentScript?.src || new URL('devtools/style-panel.js', location.href)).href;
-  const fields = [
-    { id: 'angle', group: 'wheel', label: '最大倾斜角', min: 0, max: 5, step: .25, unit: '°', fallback: 5, selector: '#app .unit-wheel', property: '--wheel-max-angle' },
-    { id: 'duration', group: 'wheel', label: '过渡时长', min: 0, max: 600, step: 10, unit: 'ms', fallback: 220, selector: '#app .unit-wheel', property: '--wheel-duration' },
-    { id: 'easing', group: 'wheel', label: '缓动曲线', options: { 'ease-out': '缓出 · 逐渐减速', 'ease-in-out': '缓入缓出', linear: '匀速' }, fallback: 'ease-out', selector: '#app .unit-wheel', property: '--wheel-easing' },
-    { id: 'perspective', group: 'wheel', label: '透视距离', min: 200, max: 1600, step: 20, unit: 'px', fallback: 480, selector: '#app .unit-wheel', property: '--wheel-perspective' },
-    { id: 'rowHeight', group: 'wheel', label: '单位行高', min: 48, max: 104, step: 2, unit: 'px', cssUnit: 'px', fallback: 72, selector: '#app .wheels, #app .unit-wheel', readSelector: '#from-wheel', property: '--row-height' },
-    { id: 'fade', group: 'wheel', label: '边缘渐隐', min: 0, max: 35, step: 1, unit: '%', cssUnit: '%', fallback: 12, selector: '#app .wheel-fade', property: 'height', useFallback: true },
-    { id: 'nameSize', group: 'text', label: '单位名称', min: 9, max: 20, step: 1, unit: 'px', cssUnit: 'px', fallback: 12, selector: '#app .unit-name', property: 'font-size' },
-    { id: 'valueSize', group: 'text', label: '候选数字', min: 16, max: 40, step: 1, unit: 'px', cssUnit: 'px', fallback: 25, selector: '#app .unit-row .unit-value', property: 'font-size' },
-    { id: 'focusSize', group: 'text', label: '高亮数字', min: 20, max: 48, step: 1, unit: 'px', cssUnit: 'px', fallback: 31, selector: '#app .unit-focus .unit-value', property: 'font-size' },
-    { id: 'symbolSize', group: 'text', label: '单位符号', min: 10, max: 24, step: 1, unit: 'px', cssUnit: 'px', fallback: 15, selector: '#app .unit-symbol', property: 'font-size' },
-    { id: 'padding', group: 'text', label: '文字右侧留白', min: 8, max: 48, step: 1, unit: 'px', cssUnit: 'px', fallback: 29, selector: '#app .unit-face', property: 'padding-right' },
-    { id: 'accent', group: 'color', label: '主题红色', type: 'color', fallback: '#e73a32', selector: ':root', property: '--red' },
-    { id: 'ink', group: 'color', label: '主要文字', type: 'color', fallback: '#303132', selector: ':root', property: '--ink' },
-    { id: 'candidate', group: 'color', label: '候选单位文字', type: 'color', fallback: '#5c5e5b', selector: '#app .unit-row', property: 'color' },
-    { id: 'keys', group: 'color', label: '数字键背景', type: 'color', fallback: '#e5e6e7', selector: ':root', property: '--key' }
-  ];
+  let fields;
+  try { fields = JSON.parse(document.getElementById('metrio-style-schema').textContent); }
+  catch { return; /* The optional tools may have been removed. */ }
   const byId = new Map(fields.map(field => [field.id, field]));
   function normalize(field, value) {
     if (field.options) return Object.hasOwn(field.options, value) ? value : undefined;
@@ -41,7 +27,15 @@
       return [field.id, value === undefined ? field.fallback : value];
     }));
   }
-  let defaults = readDefaults();
+  function readApplied() {
+    try {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--metrio-saved-styles').trim();
+      const parsed = JSON.parse(decodeURIComponent(raw.replace(/^['"]|['"]$/g, '')));
+      return Object.fromEntries(fields.map(field => [field.id, normalize(field, parsed?.[field.id])]).filter(([, value]) => value !== undefined));
+    } catch { return {}; }
+  }
+  let appliedValues = readApplied();
+  let defaults = { ...readDefaults(), ...appliedValues };
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* Preview also works without storage. */ }
   let values = {};
@@ -52,6 +46,7 @@
   let enabled = saved.enabled !== false;
   let expanded = saved.expanded !== false;
   let destroyed = false;
+  let saving = false;
   const host = document.createElement('div');
   host.id = 'metrio-devtools';
   host.dataset.side = saved.side === 'right' ? 'right' : 'left';
@@ -70,14 +65,15 @@
       <header><div><span class="eyebrow">METRIO / DEV</span><h2>样式调试</h2></div><div class="header-actions"><button type="button" class="icon-button" data-command="move" aria-label="移到右侧" title="切换停靠位置">⇄</button><button type="button" class="icon-button" data-command="toggle" aria-label="收起样式调试" title="收起">×</button></div></header>
       <div class="tabs" role="tablist" aria-label="样式分类">${[['wheel', '滚轮与动画'], ['text', '文字'], ['color', '配色']].map(([id, label], index) => `<button type="button" role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${index === 0}" aria-controls="group-${id}">${label}</button>`).join('')}</div>
       <div class="content">${['wheel', 'text', 'color'].map((id, index) => `<div id="group-${id}" role="tabpanel" aria-labelledby="tab-${id}" ${index ? 'hidden' : ''}>${fields.filter(field => field.group === id).map(control).join('')}</div>`).join('')}
-        <div class="export" hidden><label for="export-css">可独立使用的 CSS</label><textarea id="export-css" spellcheck="false" readonly></textarea><button type="button" data-command="copy">复制 CSS</button><p>追加到 src/styles.css 后，普通版也会采用这些样式。</p></div>
+        <div class="export" hidden><label for="export-css">可独立使用的 CSS</label><textarea id="export-css" spellcheck="false" readonly></textarea><button type="button" data-command="copy">复制 CSS</button><p>供备份或分享使用。日常调整直接点“保存并应用”即可。</p></div>
       </div>
-      <footer><label class="preview"><input id="preview-enabled" type="checkbox">启用样式预览</label><div class="actions"><button type="button" data-command="reset">恢复默认</button><button type="button" data-command="export" class="primary">导出 CSS</button></div><p class="status" role="status" aria-live="polite">仅用于开发 · 本机自动保存</p><p class="shortcut">Ctrl + Shift + D 收起 / 展开</p></footer>
+      <footer><label class="preview"><input id="preview-enabled" type="checkbox">启用样式预览</label><button type="button" data-command="save" class="save-button">保存并应用</button><div class="actions"><button type="button" data-command="reset">重置预览</button><button type="button" data-command="export">导出 CSS</button></div><p class="status" role="status" aria-live="polite">保存后普通版也会保留样式</p><p class="shortcut">Ctrl + Shift + D 收起 / 展开</p></footer>
     </section>`;
   const $ = selector => shadow.querySelector(selector);
   function announce(message) { if (!destroyed) $('.status').textContent = message; }
   function exportCSS() {
-    const rules = fields.filter(field => Object.hasOwn(values, field.id)).map(field => `${field.selector} { ${field.property}: ${values[field.id]}${field.cssUnit || ''} !important; }`);
+    const current = { ...appliedValues, ...values };
+    const rules = fields.filter(field => Object.hasOwn(current, field.id)).map(field => `${field.selector} { ${field.property}: ${current[field.id]}${field.cssUnit || ''} !important; }`);
     return '/* Metrio style overrides. No development tools required. */\n' + (rules.length ? rules.join('\n') : '/* No overrides: application defaults are in use. */') + '\n';
   }
   function refreshControls(editingInput) {
@@ -96,11 +92,71 @@
     window.dispatchEvent(new Event('resize'));
     refreshControls(editingInput);
   }
-  function persist() {
+  function persist(quiet = false) {
     try {
       localStorage.setItem(storageKey, JSON.stringify({ values, enabled, expanded, side: host.dataset.side }));
-      announce(enabled ? '已保存到本机 · 实时预览中' : '预览已暂停 · 当前为应用默认样式');
-    } catch { announce('当前环境无法保存，仍可实时预览和导出'); }
+      if (!quiet) announce(enabled ? '预览草稿已记住 · 点击保存后写入程序' : '预览已暂停 · 显示程序已保存的样式');
+    } catch { if (!quiet) announce('无法保存预览草稿，仍可预览并写入程序'); }
+  }
+  function requestSave(current) {
+    const bridge = window.chrome?.webview;
+    if (bridge?.postMessage && bridge.addEventListener) {
+      return new Promise((resolve, reject) => {
+        const requestId = crypto.randomUUID();
+        const cleanup = () => { clearTimeout(timer); bridge.removeEventListener('message', receive); };
+        const receive = event => {
+          if (event.data?.type !== 'metrio-style-save-result' || event.data.requestId !== requestId) return;
+          cleanup(); resolve(event.data);
+        };
+        const timer = setTimeout(() => { cleanup(); reject(new Error('未收到保存结果，请重新打开程序核对。')); }, 15000);
+        bridge.addEventListener('message', receive);
+        try { bridge.postMessage({ type: 'metrio-save-styles', requestId, values: current }); }
+        catch (error) { cleanup(); reject(error); }
+      });
+    }
+    return fetch('/__styles', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: current }), signal: AbortSignal.timeout(15000)
+    }).then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '保存失败，请检查开发服务器。');
+      return result;
+    });
+  }
+  async function saveAndApply() {
+    if (saving || destroyed) return;
+    saving = true;
+    shadow.querySelectorAll('[data-field], #preview-enabled, [data-command="reset"], [data-command="save"]').forEach(input => { input.disabled = true; });
+    $('[data-command="save"]').textContent = '正在保存…';
+    announce('正在写入程序样式…');
+    try {
+      const result = await requestSave({ ...appliedValues, ...values });
+      if (!result.ok || typeof result.css !== 'string' || !result.values) throw new Error(result.error || '没有收到有效的保存结果。');
+      const permanent = document.createElement('style');
+      permanent.id = 'metrio-user-styles';
+      permanent.textContent = result.css;
+      const previous = document.getElementById(permanent.id);
+      if (previous) previous.replaceWith(permanent); else document.head.append(permanent);
+      overrides.remove();
+      appliedValues = result.values;
+      values = {}; enabled = true;
+      defaults = { ...readDefaults(), ...appliedValues };
+      persist(true);
+      window.dispatchEvent(new Event('resize'));
+      if (!destroyed) {
+        refreshControls();
+        announce(result.desktopUpdated ? '已保存并应用 · 普通桌面版重开后生效' : '已保存到项目 · 构建后桌面版也会生效');
+      }
+      return true;
+    } catch (error) {
+      announce('未完成保存：' + error.message);
+      return false;
+    } finally {
+      saving = false;
+      if (!destroyed) {
+        shadow.querySelectorAll('[data-field], #preview-enabled, [data-command="reset"], [data-command="save"]').forEach(input => { input.disabled = false; });
+        $('[data-command="save"]').textContent = '保存并应用';
+      }
+    }
   }
   function setExpanded(value) {
     expanded = value;
@@ -108,7 +164,7 @@
     $('.launcher').hidden = expanded;
     if (expanded) $('[data-command="move"]').focus();
     else $('.launcher').focus();
-    persist();
+    persist(true);
   }
   function shortcut(event) {
     if (event.ctrlKey && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'd') {
@@ -131,7 +187,7 @@
   function onInput(event) {
     const input = event.target;
     const field = byId.get(input.dataset.field);
-    if (!field) return;
+    if (!field || saving) return;
     const typingNumber = input.type === 'number' && event.type === 'input';
     if (typingNumber && (input.value === '' || Number(input.value) < field.min || Number(input.value) > field.max)) return;
     const value = normalize(field, input.value);
@@ -146,7 +202,7 @@
   });
   shadow.addEventListener('click', async event => {
     const button = event.target.closest('button');
-    if (!button) return;
+    if (!button || button.disabled) return;
     if (button.dataset.tab) {
       shadow.querySelectorAll('[role="tab"]').forEach(tab => { const active = tab === button; tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; });
       shadow.querySelectorAll('[role="tabpanel"]').forEach(panel => { panel.hidden = panel.id !== `group-${button.dataset.tab}`; });
@@ -154,9 +210,10 @@
     }
     switch (button.dataset.command) {
       case 'toggle': setExpanded(!expanded); break;
-      case 'move': host.dataset.side = host.dataset.side === 'left' ? 'right' : 'left'; refreshControls(); persist(); break;
+      case 'move': host.dataset.side = host.dataset.side === 'left' ? 'right' : 'left'; refreshControls(); persist(true); break;
       case 'reset':
-        values = {}; enabled = true; overrides.remove(); defaults = readDefaults(); apply(); persist(); announce('已恢复默认 · 换算、收藏和历史不变'); break;
+        values = {}; enabled = true; overrides.remove(); defaults = { ...readDefaults(), ...appliedValues }; apply(); persist(true); announce('预览已重置 · 显示程序已保存的样式'); break;
+      case 'save': await saveAndApply(); break;
       case 'export': $('.export').hidden = !$('.export').hidden; if (!$('.export').hidden) { $('#export-css').value = exportCSS(); $('#export-css').focus(); $('#export-css').select(); } break;
       case 'copy':
         try { await navigator.clipboard.writeText(exportCSS()); announce('CSS 已复制，可脱离调试面板使用'); }
@@ -171,6 +228,7 @@
     show: () => setExpanded(true),
     hide: () => setExpanded(false),
     exportCSS,
+    saveAndApply,
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -184,5 +242,6 @@
   $('.panel').hidden = !expanded;
   $('.launcher').hidden = expanded;
   apply();
+  if (Object.keys(values).length) announce(enabled ? '已恢复预览草稿 · 点击保存后写入程序' : '预览已暂停 · 显示程序已保存的样式');
   try { window.chrome?.webview?.postMessage({ type: 'metrio-devtools-ready' }); } catch { /* Optional host notification. */ }
 })();

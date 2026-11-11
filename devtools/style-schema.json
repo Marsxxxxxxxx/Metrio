@@ -1,0 +1,17 @@
+[
+  {"id":"angle","group":"wheel","label":"最大倾斜角","min":0,"max":90,"step":0.25,"unit":"°","fallback":5,"selector":"#app .unit-wheel","property":"--wheel-max-angle"},
+  {"id":"duration","group":"wheel","label":"过渡时长","min":0,"max":3000,"step":10,"unit":"ms","fallback":220,"selector":"#app .unit-wheel","property":"--wheel-duration"},
+  {"id":"easing","group":"wheel","label":"缓动曲线","options":{"ease-out":"缓出 · 逐渐减速","ease-in-out":"缓入缓出","linear":"匀速"},"fallback":"ease-out","selector":"#app .unit-wheel","property":"--wheel-easing"},
+  {"id":"perspective","group":"wheel","label":"透视距离","min":80,"max":5000,"step":20,"unit":"px","fallback":480,"selector":"#app .unit-wheel","property":"--wheel-perspective"},
+  {"id":"rowHeight","group":"wheel","label":"单位行高","min":24,"max":240,"step":2,"unit":"px","cssUnit":"px","fallback":72,"selector":"#app .wheels, #app .unit-wheel","readSelector":"#from-wheel","property":"--row-height"},
+  {"id":"fade","group":"wheel","label":"边缘渐隐","min":0,"max":50,"step":1,"unit":"%","cssUnit":"%","fallback":12,"selector":"#app .wheel-fade","property":"height","useFallback":true},
+  {"id":"nameSize","group":"text","label":"单位名称","min":6,"max":48,"step":1,"unit":"px","cssUnit":"px","fallback":12,"selector":"#app .unit-name","property":"font-size"},
+  {"id":"valueSize","group":"text","label":"候选数字","min":10,"max":120,"step":1,"unit":"px","cssUnit":"px","fallback":25,"selector":"#app .unit-row .unit-value","property":"font-size"},
+  {"id":"focusSize","group":"text","label":"高亮数字","min":12,"max":160,"step":1,"unit":"px","cssUnit":"px","fallback":31,"selector":"#app .unit-focus .unit-value","property":"font-size"},
+  {"id":"symbolSize","group":"text","label":"单位符号","min":6,"max":64,"step":1,"unit":"px","cssUnit":"px","fallback":15,"selector":"#app .unit-symbol","property":"font-size"},
+  {"id":"padding","group":"text","label":"文字右侧留白","min":0,"max":128,"step":1,"unit":"px","cssUnit":"px","fallback":29,"selector":"#app .unit-face","property":"padding-right"},
+  {"id":"accent","group":"color","label":"主题红色","type":"color","fallback":"#e73a32","selector":":root","property":"--red"},
+  {"id":"ink","group":"color","label":"主要文字","type":"color","fallback":"#303132","selector":":root","property":"--ink"},
+  {"id":"candidate","group":"color","label":"候选单位文字","type":"color","fallback":"#5c5e5b","selector":"#app .unit-row","property":"color"},
+  {"id":"keys","group":"color","label":"数字键背景","type":"color","fallback":"#e5e6e7","selector":":root","property":"--key"}
+]

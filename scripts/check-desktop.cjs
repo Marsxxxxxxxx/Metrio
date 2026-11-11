@@ -16,7 +16,7 @@ for (const file of manifest.files) {
   assert.equal(data.length, file.bytes, file.path);
   assert.equal(crypto.createHash('sha256').update(data).digest('hex').toUpperCase(), file.sha256, file.path);
 }
-for (const file of ['index.html', 'src/app.js', 'src/engine.js', 'src/styles.css', 'assets/icon.svg']) {
+for (const file of ['index.html', 'src/app.js', 'src/engine.js', 'src/styles.css', 'src/user-styles.css', 'assets/icon.svg']) {
   assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(output, 'www', file))), `Stale packaged asset: ${file}`);
 }
 for (const file of ['USAGE.txt', 'Metrio Compatibility.cmd']) {
